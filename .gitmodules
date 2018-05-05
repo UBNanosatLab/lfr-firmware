@@ -1,0 +1,3 @@
+[submodule "lib446x"]
+	path = lib446x
+	url = git@github.com:UBNanosatLab/lib446x.git
