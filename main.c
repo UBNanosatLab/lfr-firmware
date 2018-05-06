@@ -171,12 +171,16 @@ int main(void)
     WDTCTL = WDTPW | WDTHOLD;   // stop watchdog timer
 
     mcu_init();
+    uart_init();
     gpio_config(0x10, OUTPUT);
     gpio_write(0x10, LOW);
     gpio_config(0x11, OUTPUT);
     gpio_write(0x11, LOW);
 
     set_cmd_handler(&command_handler);
+
+    printf("Hello, world!\n");
+    reply_nopay(CMD_NOP);
 
     i2c_init();
     err = set_gate_bias(0x000);

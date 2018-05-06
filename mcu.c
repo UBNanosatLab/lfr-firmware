@@ -92,24 +92,14 @@ void bc_uart_init()
 
 
     // Config UCA0 (back-channel UART)
-//    For 1 MHz SMCLK
-//    UCA0CTLW0 = UCSWRST;                    // Put eUSCI in reset
-//    UCA0CTLW0 |= UCSSEL__SMCLK;             // CLK = SMCLK
-//    // Baud Rate calculation
-//    // Table 30-5
-//    UCA0BRW = 6;
-//    //                             UCBRSx
-//    UCA0MCTLW = UCOS16 | UCBRF_8 | 0xAA00;
-//    UCA0CTLW0 &= ~UCSWRST;                  // Initialize eUSCI
-
     // For 8 MHz SMCLK
     UCA0CTLW0 = UCSWRST;                    // Put eUSCI in reset
     UCA0CTLW0 |= UCSSEL__SMCLK;             // CLK = SMCLK
     // Baud Rate calculation
     // Table 30-5
-    UCA0BRW = 26;
+    UCA0BRW = 52;
     //                             UCBRSx
-    UCA0MCTLW = UCOS16 | UCBRF_0 | 0xB600;
+    UCA0MCTLW = UCOS16 | UCBRF_1 | 0x4900;
     UCA0CTLW0 &= ~UCSWRST;                  // Initialize eUSCI
 
 }

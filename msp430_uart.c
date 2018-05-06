@@ -52,6 +52,12 @@ void uart_init_pins(){
     PxSEL1 |= (BIT0 | BIT1);
     PxSEL0 &= ~(BIT0 | BIT1);    // USCI_A3 UART operation
 #endif
+
+#ifdef UART_PINS_BOOSTERPACK
+    // Opposite for boosterpack as for backchannel. WHY TI?
+    PxSEL0 |= (BIT0 | BIT1);
+    PxSEL1 &= ~(BIT0 | BIT1);    // USCI_A3 UART operation
+#endif
 }
 
 
@@ -62,18 +68,12 @@ int uart_init(){
     // Configure USCI_A3 for UART mode
     UCAxCTLW0 = UCSWRST;                    // Put eUSCI in reset
     UCAxCTLW0 |= UCSSEL__SMCLK;             // CLK = SMCLK
-    // Baud Rate calculation, assuming 8MHz SMCLK
-    // 8000000/(16*9600) = 52.083
-    // Fractional portion = 0.083
-    // User's Guide Table 21-4: UCBRSx = 0x04
-    // UCBRFx = int ( (52.083-52)*16) = 1
-    UCAxBRW = 104;                           // 16MHz/(16*9600Hz) = 104.1667
-    //UCAxMCTLW |= UCOS16 | UCBRF_1 | 0x4900;
-    // clock/baud = 104.1667, fractional part is ~2/16, so UCBRFx bits are 0x2, or 0x20 after shifting
-    // datasheet says UCBRSx (upper byte of UCAxMCTLW) should be 0xD6? for fractional part?
-    UCAxMCTLW |= UCOS16 | 0x0020 | 0xD600;
+    // See User's Guide Table 30-5 on page 779
+    UCAxBRW = 52;
+    //                    UCBRFx   UCBRSx
+    UCAxMCTLW |= UCOS16 | 0x0001 | 0x4900;
     UCAxCTLW0 &= ~UCSWRST;                  // Initialize eUSCI
-    //UCAxIE |= UCRXIE | UCTXIE;                       // Enable USCI_A3 RX interrupt
+    //UCAxIE |= UCRXIE | UCTXIE;                       // Enable USCI_Ax RX interrupt
     UCAxIE |= UCRXIE;
     __bis_SR_register(GIE);   // enable global interrupts
     return 0;
