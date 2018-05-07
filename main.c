@@ -17,6 +17,9 @@
 struct si446x_device dev;
 uint8_t buf[255];
 
+//status byte for command replies. Bits are [TXBUSY]:[BADCMD]:[BADCKSUM]:[GOODCMD]:[reserved for tx buffer depth 3:0]
+uint8_t sys_stat = 0;
+
 volatile bool do_pong = false;
 volatile bool radio_irq = false;
 
@@ -28,13 +31,19 @@ void rx_cb(struct si446x_device *dev, int err, int len, uint8_t *data);
 void tx_cb(struct si446x_device *dev, int err);
 int set_gate_bias(uint16_t bias);
 
+void set_cmd_flag(uint8_t flag){
+    sys_stat &= ~(FLAG_GOODCMD | FLAG_INVALID | FLAG_BADSUM);
+    sys_stat |= flag;
+}
 
 void reply_error(uint8_t code)
 {
     uart_putc(SYNCWORD_H);
     uart_putc(SYNCWORD_L);
+    uart_putc(sys_stat);
+    uint16_t chksum = fletcher(0, sys_stat);
     uart_putc('E');
-    uint16_t chksum = fletcher(0, 'E');
+    chksum = fletcher(chksum, 'E');
     uart_putc(code);
     chksum = fletcher(chksum, code);
     uart_putc((char) (chksum >> 8));
@@ -45,8 +54,10 @@ void reply_nopay(uint8_t cmd)
 {
     uart_putc(SYNCWORD_H);
     uart_putc(SYNCWORD_L);
+    uart_putc(sys_stat);
+    uint16_t chksum = fletcher(0, sys_stat);
     uart_putc(cmd);
-    uint16_t chksum = fletcher(0, cmd);
+    chksum = fletcher(chksum, cmd);
     uart_putc((char) (chksum >> 8));
     uart_putc((char) chksum);
 }
@@ -55,8 +66,10 @@ void reply_pay(uint8_t cmd, int len, uint8_t *payload)
 {
     uart_putc(SYNCWORD_H);
     uart_putc(SYNCWORD_L);
+    uart_putc(sys_stat);
+    uint16_t chksum = fletcher(0, sys_stat);
     uart_putc(cmd);
-    uint16_t chksum = fletcher(0, cmd);
+    chksum = fletcher(chksum, cmd);
 
     uart_putc(len);
     chksum = fletcher(chksum, len);
@@ -78,6 +91,7 @@ void tx_cb(struct si446x_device *dev, int err)
     }
 
     set_gate_bias(0x000);
+    sys_stat &= ~(FLAG_TXBUSY);
     si446x_recv_async(dev, 255, buf, rx_cb);
     wdt_feed();
 }
@@ -90,6 +104,7 @@ void rx_cb(struct si446x_device *dev, int err, int len, uint8_t *data)
     TA1CTL |= TACLR;                        // Stop timer
 
     if (err) {
+        sys_stat &= ~(FLAG_TXBUSY);
         reply_error((uint8_t) -err);
         si446x_recv_async(dev, 255, buf, rx_cb);
         return;
@@ -104,6 +119,7 @@ void rx_cb(struct si446x_device *dev, int err, int len, uint8_t *data)
             'N',
             'G',
         };
+        sys_stat |= FLAG_TXBUSY;
         err = set_gate_bias(tx_gate_bias);
         si446x_setup_tx(dev, sizeof(resp), resp, tx_cb);
         do_pong = true;
@@ -113,7 +129,7 @@ void rx_cb(struct si446x_device *dev, int err, int len, uint8_t *data)
         // Handle RX'd packet
         reply_pay(CMD_RXDATA, len, data);
     }
-
+    sys_stat &= ~(FLAG_TXBUSY);
     si446x_recv_async(dev, 255, buf, rx_cb);
 }
 
@@ -122,6 +138,7 @@ void command_handler(uint8_t cmd, uint8_t len, uint8_t* payload){
 
         memcpy(buf, payload, len);
 
+        sys_stat |= FLAG_TXBUSY;
         set_gate_bias(tx_gate_bias);
         int err = si446x_send_async(&dev, len, buf, tx_cb);
 
@@ -130,6 +147,8 @@ void command_handler(uint8_t cmd, uint8_t len, uint8_t* payload){
             reply_error((uint8_t) -err);
         } else {
             // We're good
+            set_cmd_flag(FLAG_GOODCMD);
+            reply_nopay(cmd);
         }
 
     } else if (cmd == CMD_SET_TXPWR) {
@@ -137,21 +156,31 @@ void command_handler(uint8_t cmd, uint8_t len, uint8_t* payload){
             reply_error(0xFF);
         } else {
             tx_gate_bias = (payload[0] << 8) | payload[1];
+            set_cmd_flag(FLAG_GOODCMD);
+            reply_nopay(cmd);
         }
     } else if (cmd == CMD_READ_TXPWR) {
         if (len != 0) {
             reply_error(0xFF);
         } else {
             uint8_t resp[] = {(uint8_t)(tx_gate_bias >> 8), (uint8_t)(tx_gate_bias >> 8)};
+            set_cmd_flag(FLAG_GOODCMD);
             reply_pay(CMD_READ_TXPWR, sizeof(resp), resp);
         }
     } else if (cmd == CMD_RESET) {
         WDTCTL = 0x0000; // Force WDT reset
     } else if (cmd == CMD_NOP) {
+        set_cmd_flag(FLAG_GOODCMD);
         reply_nopay(CMD_NOP);
     } else {
+        set_cmd_flag(FLAG_INVALID);
         reply_error(0xFF);
     }
+}
+
+void cmd_err_handler(uint8_t cmd){
+    set_cmd_flag(cmd & 0xf0); //transfer error flags from cmd byte to system status byte
+    reply_error(cmd);
 }
 
 int set_gate_bias(uint16_t bias)
@@ -170,17 +199,21 @@ int main(void)
     int err;
     WDTCTL = WDTPW | WDTHOLD;   // stop watchdog timer
 
+
     mcu_init();
     uart_init();
+
+    //Power-on tests
+    printf("hello world this is the right port\n");
+    reply_nopay(CMD_RESET);
+
     gpio_config(0x10, OUTPUT);
     gpio_write(0x10, LOW);
     gpio_config(0x11, OUTPUT);
     gpio_write(0x11, LOW);
 
     set_cmd_handler(&command_handler);
-
-    printf("Hello, world!\n");
-    reply_nopay(CMD_NOP);
+    set_error_handler(&cmd_err_handler);
 
     i2c_init();
     err = set_gate_bias(0x000);
@@ -236,6 +269,7 @@ int main(void)
         mcu_reset();
     }
 
+    sys_stat &= ~(FLAG_TXBUSY);
     err = si446x_recv_async(&dev, 255, buf, rx_cb);
     if (err) {
         gpio_write(0x10, HIGH);
@@ -252,7 +286,7 @@ int main(void)
                 printf("Err: %d", err);
                 si446x_reset(&dev);
                 gpio_write(0x10, HIGH);
-                mcu_reset();
+                reply_error(-err);
             }
         } else if(uart_available()) {
                 char c = uart_getc();
