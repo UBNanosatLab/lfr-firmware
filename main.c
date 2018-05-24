@@ -163,7 +163,7 @@ void command_handler(uint8_t cmd, uint8_t len, uint8_t* payload){
         if (len != 0) {
             reply_error(0xFF);
         } else {
-            uint8_t resp[] = {(uint8_t)(tx_gate_bias >> 8), (uint8_t)(tx_gate_bias >> 8)};
+            uint8_t resp[] = {(uint8_t)(tx_gate_bias & 0xFF), (uint8_t)(tx_gate_bias >> 8)};
             set_cmd_flag(FLAG_GOODCMD);
             reply_pay(CMD_READ_TXPWR, sizeof(resp), resp);
         }
