@@ -1,11 +1,16 @@
 #include "cmd_parser.h"
+#include "cmd_handler.h"
 //#define USE_PRINTF
 #ifdef USE_PRINTF
 #include <stdio.h>
 #endif
 
-void (*_handle_cmd)(uint8_t, uint8_t, uint8_t*) = default_handler;
-void (*_handle_error)(uint8_t) = default_error_handler;
+void command_handler(uint8_t cmd, uint8_t len, uint8_t* payload);
+
+ bool validate_cmd(uint8_t cmd);
+ bool validate_length(uint8_t cmd, uint8_t len);
+ uint16_t fletcher(uint16_t old_checksum, uint8_t c);
+
 
 /**
  * enum for states of the byte parser state machine
@@ -48,17 +53,14 @@ void parse_char(uint8_t c) {
       else if (SYNCWORD_H != c)next_state = S_SYNC0;
       break;
     case S_CMD:
-      if (CMD_NOPAYLOAD == validate_cmd(c)) {
-        cmd = c;
-        payload_len = 0;
-        calc_checksum = fletcher(0, c);
-        next_state = S_CHECKSUM0;
-      } else if (CMD_PAYLOAD == validate_cmd(c)) {
+      if (validate_cmd(c)) {
         cmd = c;
         //calc_checksum = fletcher(calc_checksum, c);
         calc_checksum = fletcher(0, c);
         next_state = S_PAYLOADLEN;
-      } else result = R_INVALID;
+      } else {
+        result = R_INVALID;
+      }
       break;
     case S_PAYLOADLEN:
       if (validate_length(cmd, c)) {
@@ -96,49 +98,51 @@ void parse_char(uint8_t c) {
     case R_INVALID:
       next_state = S_SYNC0;
       result = R_WAIT;
-      _handle_error(FLAG_INVALID | cmd);
+      cmd_err(ECMDINVAL);
       break;
     case R_BADSUM:
       next_state = S_SYNC0;
       result = R_WAIT;
-      _handle_error(FLAG_BADSUM | cmd);
+      cmd_err(ECMDBADSUM);
       break;
     case R_ACT:
       next_state = S_SYNC0;
       result = R_WAIT;
-      _handle_cmd(cmd, payload_len, payload);
+      command_handler(cmd, payload_len, payload);
     case R_WAIT:
       break;
   }
 }
-/* returns positive for valid command types, negative for invalid */
-int validate_cmd(uint8_t cmd) {
+/* returns true for valid command types, false for invalid */
+bool validate_cmd(uint8_t cmd) {
   switch (cmd) {
     case CMD_NOP:
     case CMD_RESET:
     case CMD_READ_TXPWR:
-      return CMD_NOPAYLOAD;
-      break;
     case CMD_SET_TXPWR:
     case CMD_TXDATA:
-      return CMD_PAYLOAD;
-      break;
+    case CMD_SET_FREQ:
+      return true;
     default:
-      return CMD_INVALID;
+      return false;
   }
 }
 
-/* returns 1 if the payload length is valid for the command type, 0 if not */
-int validate_length(uint8_t cmd, uint8_t len) {
+/* returns true if the payload length is valid for the command type, false if not */
+bool validate_length(uint8_t cmd, uint8_t len) {
+  if (len > MAX_PAYLOAD_LEN) {
+    return false;
+  }
+
   switch (cmd) {
     case CMD_SET_TXPWR:
-      return 1 == len;
-      break;
+      return len == 2;
     case CMD_TXDATA:
       return len > 0;
-      break;
+    case CMD_SET_FREQ:
+      return len == 4;
     default:
-      return 0 == len;
+      return len == 0;
   }
 }
 
@@ -151,41 +155,65 @@ uint16_t fletcher(uint16_t old_checksum, uint8_t c) {
   return ((uint16_t) msb<<8) | (uint16_t)lsb;
 }
 
-/* do something with the command received. needs to actually exist. */
-void default_handler(uint8_t cmd, uint8_t len, uint8_t* payload) {
-#ifdef USE_PRINTF
-  int i;
-  switch(cmd){
-	case CMD_NOP:
-	  printf("NOP\r\n");
-	  break;
-	case CMD_TXDATA:
-	  printf("TX data: ");
-	  for(i=0; i<len; i++){
-		  printf("%x ", payload[i]);
-	  }
-	  printf("\r\n");
-	  break;
-	default:
-	  printf("not in the list\r\n");
-  }
-#endif
+void command_handler(uint8_t cmd, uint8_t len, uint8_t* payload) {
+
+    switch (cmd) {
+      case CMD_NOP:
+        cmd_nop();
+        break;
+      case CMD_RESET:
+        cmd_reset();
+        break;
+      case CMD_READ_TXPWR:
+        cmd_get_txpwr();
+        break;
+      case CMD_SET_TXPWR:
+        cmd_set_txpwr((uint16_t) payload[0] << 8 | payload[1]);
+      case CMD_TXDATA:
+        cmd_tx_data(len, payload);
+        break;
+      case CMD_SET_FREQ:
+        cmd_set_freq((uint32_t) payload[0] << 24 | (uint32_t) payload[1] << 16 | (uint32_t) payload[2] << 8 |
+                     payload[3]);
+        break;
+    }
 }
 
-void default_error_handler(uint8_t cmd){
-#ifdef USE_PRINTF
-	printf("reply_nopayload: %x\r\n", cmd);
-#endif
+void reply_error(uint8_t sys_stat, uint8_t code)
+{
+    reply_putc(SYNCWORD_H);
+    reply_putc(SYNCWORD_L);
+    reply_putc(sys_stat);
+    uint16_t chksum = fletcher(0, sys_stat);
+    reply_putc(CMD_ERR);
+    chksum = fletcher(chksum, CMD_ERR);
+    reply_putc(1);
+    chksum = fletcher(chksum, 1);
+    reply_putc(code);
+    chksum = fletcher(chksum, code);
+    reply_putc((char) (chksum >> 8));
+    reply_putc((char) chksum);
 }
 
-void set_cmd_handler(void (*fn)(uint8_t, uint8_t, uint8_t*)){
-	if(0 != fn){
-		_handle_cmd = fn;
-	}
-}
+void reply(uint8_t sys_stat, uint8_t cmd, int len, uint8_t *payload)
+{
+    cmd ^= 0x80; // Flip highest bit in reply
+    reply_putc(SYNCWORD_H);
+    reply_putc(SYNCWORD_L);
+    reply_putc(sys_stat);
+    uint16_t chksum = fletcher(0, sys_stat);
+    reply_putc(cmd);
+    chksum = fletcher(chksum, cmd);
 
-void set_error_handler(void (*fn)(uint8_t)){
-	if(0 != fn){
-		_handle_error = fn;
-	}
+    reply_putc(len);
+    chksum = fletcher(chksum, len);
+
+    for (; len > 0; len--) {
+        reply_putc(*payload);
+        chksum = fletcher(chksum, *payload);
+        payload++;
+    }
+
+    reply_putc((char) (chksum >> 8));
+    reply_putc((char) chksum);
 }

@@ -45,20 +45,20 @@ static volatile unsigned char *const gpio_out_for_port[] =
     &P8OUT,
 };
 
-static volatile unsigned char *const gpio_ifg_for_port[] =
-{
-    0x0000,
-    &P1IFG,
-    &P2IFG,
-    &P3IFG,
-    &P4IFG,
-    &P5IFG,
-    &P6IFG,
-    &P7IFG,
-    &P8IFG,
-};
+//static volatile unsigned char *const gpio_ifg_for_port[] =
+//{
+//    0x0000,
+//    &P1IFG,
+//    &P2IFG,
+//    &P3IFG,
+//    &P4IFG,
+//    &P5IFG,
+//    &P6IFG,
+//    &P7IFG,
+//    &P8IFG,
+//};
 
-static volatile  unsigned char *const gpio_ie_for_port[] =
+static volatile unsigned char *const gpio_ie_for_port[] =
 {
     0x0000,
     &P1IE,
@@ -184,7 +184,8 @@ void mcu_init()
     TA1CTL = TASSEL__ACLK | TACLR;          // ACLK
 
     // 16 sec w/ 32.768 kHz ACLK
-    WDTCTL = WDTPW | WDTSSEL__ACLK | WDTCNTCL | WDTIS__512K;
+    // TODO: Re-enable
+//    WDTCTL = WDTPW | WDTSSEL__ACLK | WDTCNTCL | WDTIS__512K;
 
     __enable_interrupt();
 }
@@ -364,7 +365,7 @@ void spi_write_byte(unsigned char b)
     spi_xfer(b);
 }
 
-void spi_write_data(int len, unsigned char *data)
+void spi_write_data(int len, const unsigned char *data)
 {
     unsigned int i;
     for(i = 0; i < len; i++) {
@@ -392,8 +393,9 @@ int enable_pin_interrupt(int pin, int edge)
     char cur_ie = *gpio_ie_for_port[port];
     *gpio_ie_for_port[port] = cur_ie | (1 << pin_num);
 
-    char cur_ifg = *gpio_ifg_for_port[port];
-    *gpio_ifg_for_port[port] = cur_ifg | (1 << pin_num);
+//    // TODO: Why was this here?
+//    char cur_ifg = *gpio_ifg_for_port[port];
+//    *gpio_ifg_for_port[port] = cur_ifg | (1 << pin_num);
 
     __enable_interrupt(); // enable all interrupts
 

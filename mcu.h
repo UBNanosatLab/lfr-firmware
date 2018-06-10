@@ -24,7 +24,7 @@ int i2c_write(unsigned char slave_addr, unsigned char *buf, unsigned char len);
 
 void spi_init();
 void spi_write_byte(unsigned char b);
-void spi_write_data(int len, unsigned char *data);
+void spi_write_data(int len, const unsigned char *data);
 void spi_read_data(int len, unsigned char *data);
 
 void gpio_config(int pin, int mode);
