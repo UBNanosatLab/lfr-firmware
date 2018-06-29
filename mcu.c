@@ -18,6 +18,7 @@
 volatile unsigned char _i2c_tx_byte_ctr; //bytes remaining this transaction
 unsigned char _i2c_tx_bytes; //bytes to send this transaction
 unsigned char *_i2c_tx_data; //pointer to buffer of data to send
+volatile bool _i2c_did_nack = false;
 
 static volatile unsigned char *const gpio_dir_for_port[] =
 {
@@ -223,16 +224,24 @@ void i2c_init(){
     UCB2IE |= UCTXIE0 | UCNACKIE;           // transmit and NACK interrupt enable
 }
 
+// Returns bytes written, -1 indicates START failed (no such device?)
 int i2c_write(unsigned char slave_addr, unsigned char *buf, unsigned char len){
     while (UCB2CTLW0 & UCTXSTP);        // if there's a pending stop from a previous transaction, wait for it to be sent
     UCB2I2CSA = slave_addr;// set slave address
     _i2c_tx_bytes = _i2c_tx_byte_ctr = len;
     _i2c_tx_data = buf;
+    _i2c_did_nack = false;
     UCB2CTLW0 |= UCTR | UCTXSTT;        // I2C TX, start condition
     unsigned short sr;
     sr = __get_SR_register();         //store existing interrupt state
-    __bis_SR_register(LPM0_bits | GIE);  //go into LPM0 until data is sent
+    while (_i2c_tx_byte_ctr && !_i2c_did_nack) {
+        __bis_SR_register(LPM0_bits | GIE);  //go into LPM0 until data is sent
+    }
     __set_interrupt_state(sr);          //restore previous interrupt state
+    if (_i2c_did_nack) {
+        // Last byte not successfully sent
+        _i2c_tx_byte_ctr++;
+    }
     return len - _i2c_tx_byte_ctr;
 }
 
@@ -252,6 +261,7 @@ void __attribute__ ((interrupt(EUSCI_B2_VECTOR))) USCI_B2_ISR (void)
         case USCI_I2C_UCALIFG:   break;     // Vector 2: ALIFG
         case USCI_I2C_UCNACKIFG:            // Vector 4: NACKIFG
             //UCB2CTLW0 |= UCTXSTT;           // resend start if NACK
+            _i2c_did_nack = true;
             __bic_SR_register_on_exit(LPM0_bits); // exit LPM0 to abort
             break;
         case USCI_I2C_UCSTTIFG:  break;     // Vector 6: STTIFG
