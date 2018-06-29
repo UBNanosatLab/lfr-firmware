@@ -68,10 +68,25 @@ int uart_init(){
     // Configure USCI_A3 for UART mode
     UCAxCTLW0 = UCSWRST;                    // Put eUSCI in reset
     UCAxCTLW0 |= UCSSEL__SMCLK;             // CLK = SMCLK
+
     // See User's Guide Table 30-5 on page 779
-    UCAxBRW = 52;
+
+    // 9600 baud
+//    UCAxBRW = 52;
+//    //                    UCBRFx   UCBRSx
+//    UCAxMCTLW |= UCOS16 | 0x0001 | 0x4900;
+
+    // 38400
+//    UCAxBRW = 13;
+//    //                    UCBRFx   UCBRSx
+//    UCAxMCTLW = UCOS16 | UCBRF_0 | 0x8400;
+
+    // 115200
+    UCAxBRW = 4;
     //                    UCBRFx   UCBRSx
-    UCAxMCTLW |= UCOS16 | 0x0001 | 0x4900;
+    UCAxMCTLW = UCOS16 | UCBRF_5 | 0x5500;
+
+
     UCAxCTLW0 &= ~UCSWRST;                  // Initialize eUSCI
     //UCAxIE |= UCRXIE | UCTXIE;                       // Enable USCI_Ax RX interrupt
     UCAxIE |= UCRXIE;
