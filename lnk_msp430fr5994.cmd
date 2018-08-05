@@ -1,4 +1,8 @@
-/******************************************************************************
+/* Little Free Radio - An Open Source Radio for CubeSats
+ * A project of the University at Buffalo Nanosatellite Laboratory
+ *
+ * This file is provided under the following licensing conditions:
+ *
 *
 * Copyright (C) 2012 - 2017 Texas Instruments Incorporated - http://www.ti.com/
 *
@@ -369,5 +373,3 @@ SECTIONS
 /****************************************************************************/
 
 -l msp430fr5994.cmd
-
-
