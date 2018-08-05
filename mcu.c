@@ -6,13 +6,13 @@
 
 
 #define CYC_PER_US      8
-#define FOR_LOOP_CYC    0 //ignore for now
+#define FOR_LOOP_CYC    4 // guessing here...
 #define F_CPU            8000000L
 //#define F_SMCLK         (4000000ul)
 #define F_SMCLK         (8000000ul)
 
 
-#define SPI_CLKDIV      (F_SMCLK / 500000L) //0.5 MHz SPI
+#define SPI_CLKDIV      (F_SMCLK / 1000000L) //0.5 MHz SPI
 #define FREQ_I2C (400000ul)
 
 volatile unsigned char _i2c_tx_byte_ctr; //bytes remaining this transaction
@@ -46,19 +46,6 @@ static volatile unsigned char *const gpio_out_for_port[] =
     &P8OUT,
 };
 
-//static volatile unsigned char *const gpio_ifg_for_port[] =
-//{
-//    0x0000,
-//    &P1IFG,
-//    &P2IFG,
-//    &P3IFG,
-//    &P4IFG,
-//    &P5IFG,
-//    &P6IFG,
-//    &P7IFG,
-//    &P8IFG,
-//};
-
 static volatile unsigned char *const gpio_ie_for_port[] =
 {
     0x0000,
@@ -70,6 +57,19 @@ static volatile unsigned char *const gpio_ie_for_port[] =
     &P6IE,
     &P7IE,
     &P8IE,
+};
+
+static volatile unsigned char *const gpio_ifg_for_port[] =
+{
+    0x0000,
+    &P1IFG,
+    &P2IFG,
+    &P3IFG,
+    &P4IFG,
+    &P5IFG,
+    &P6IFG,
+    &P7IFG,
+    &P8IFG,
 };
 
 static volatile unsigned char *const gpio_ies_for_port[] =
@@ -88,27 +88,27 @@ static volatile unsigned char *const gpio_ies_for_port[] =
 
 void bc_uart_init()
 {
-    P2SEL1 |= BIT0 | BIT1;                // Configure back-channel UART pins
-    P2SEL0 &= ~(BIT0| BIT1);
+    P2SEL1 |= BIT5 | BIT6;                // Configure debug UART pins
+    P2SEL0 &= ~(BIT5| BIT6);
 
 
-    // Config UCA0 (back-channel UART)
+    // Config UCA1 (debug UART)
     // For 8 MHz SMCLK
-    UCA0CTLW0 = UCSWRST;                    // Put eUSCI in reset
-    UCA0CTLW0 |= UCSSEL__SMCLK;             // CLK = SMCLK
+    UCA1CTLW0 = UCSWRST;                    // Put eUSCI in reset
+    UCA1CTLW0 |= UCSSEL__SMCLK;             // CLK = SMCLK
     // Baud Rate calculation
     // Table 30-5
-    UCA0BRW = 52;
+    UCA1BRW = 52;
     //                             UCBRSx
-    UCA0MCTLW = UCOS16 | UCBRF_1 | 0x4900;
-    UCA0CTLW0 &= ~UCSWRST;                  // Initialize eUSCI
+    UCA1MCTLW = UCOS16 | UCBRF_1 | 0x4900;
+    UCA1CTLW0 &= ~UCSWRST;                  // Initialize eUSCI
 
 }
 
 int fputc(int _c, register FILE *_fp)
 {
-  while(!(UCA0IFG & UCTXIFG));
-  UCA0TXBUF = (unsigned char) _c;
+  while(!(UCA1IFG & UCTXIFG));
+  UCA1TXBUF = (unsigned char) _c;
 
   return((unsigned char)_c);
 }
@@ -122,7 +122,7 @@ int fputs(const char *_ptr, register FILE *_fp)
   for(i=0 ; i<len ; i++)
   {
     while(!(UCA0IFG & UCTXIFG));
-    UCA0TXBUF = (unsigned char) _ptr[i];
+    UCA1TXBUF = (unsigned char) _ptr[i];
   }
 
   return len;
@@ -130,54 +130,48 @@ int fputs(const char *_ptr, register FILE *_fp)
 
 void init_clock()
 {
-    PJSEL0 |= BIT4 | BIT5;         // Set up external 32kHz xtal pins
+    // PJSEL0 |= BIT4 | BIT5;                                  // Set up external 32kHz xtal pins
 
-    CSCTL0 = CSKEY;                // Enable Access to CS Registers
+    CSCTL0 = CSKEY;                                         // Enable Access to CS Registers
 
-    // For 8 MHz external xtal
+    // For 16 MHz external xtal
 
-    PJSEL0 |= BIT6 | BIT7;         // Set up external high freq xtal pins
+    PJSEL0 |= BIT6 | BIT7;                                  // Set up external high freq xtal pins
 
-    CSCTL0_H = CSKEY_H;                     // Unlock CS registers
-    CSCTL1 = DCOFSEL_6;                     // Set DCO to 8MHz
+    CSCTL0_H = CSKEY_H;                                     // Unlock CS registers
+    CSCTL1 = DCOFSEL_4 | DCORSEL;                           // Set DCO to 16MHz
     CSCTL2 = SELA__VLOCLK | SELS__DCOCLK | SELM__DCOCLK;
-//    CSCTL3 = DIVA__1 | DIVS__2 | DIVM__1;   // SMCLK 4MHz
-    CSCTL3 = DIVA__1 | DIVS__1 | DIVM__1;   // SMCLK 8MHz
-    CSCTL4 |= LFXTDRIVE_3 | HFFREQ_1 | HFXTDRIVE_3; // Set drive strength and (4, 8] MHz xtal
-    CSCTL4 &= ~(HFXTOFF | LFXTOFF);         // Start osc
-    do
+    CSCTL3 = DIVA__1 | DIVS__2 | DIVM__2;                   // MCLK, SMCLK 8MHz (HFXT / 2)
+    CSCTL4 = HFFREQ_1 | HFXTDRIVE_3 | HFXTOFF | LFXTOFF;    // Set drive strength and (8, 16] MHz xtal
+    CSCTL4 &= ~(HFXTOFF);                                   // Start HFXT
+    CSCTL5 &= ~(HFXTOFFG | LFXTOFFG);                       // Clear fault flags
+
+    do                                                      // Wait for HFXT to stabilize
     {
-        CSCTL5 &= ~(LFXTOFFG | HFXTOFFG);   // Clear XT1 and XT2 fault flag
+        CSCTL5 &= ~(HFXTOFFG);                              // Clear HFXT fault flag
         SFRIFG1 &= ~OFIFG;
-    } while (SFRIFG1 & OFIFG);              // Test oscillator fault flag
+    } while (SFRIFG1 & OFIFG);                              // Test oscillator fault flag
 
 
-    CSCTL2 = SELA__LFXTCLK | SELS__HFXTCLK | SELM__HFXTCLK; // jump to HFXT
+    CSCTL2 = SELA__VLOCLK | SELS__HFXTCLK | SELM__HFXTCLK;  // jump to HFXT
 
-
-    CSCTL0_H = 0;                           // Lock CS registers
+    CSCTL0_H = 0;                                           // Lock CS registers
 }
 
 void mcu_init()
 {
-    PM5CTL0 &= ~LOCKLPM5;                   // Disable the GPIO power-on default high-impedance mode
-                                            // to activate previously configured port settings
-
-    P3DIR |= BIT4;
-    P3SEL1 |= BIT4;                         // Output SMCLK
-    P3SEL0 |= BIT4;
+    PM5CTL0 &= ~LOCKLPM5;                                   // Disable the GPIO power-on default high-impedance mode
 
     init_clock();
     bc_uart_init();
 
     __disable_interrupt();
-    P8IES &=  ~BIT1;
-    P8IE |= BIT1;
-    P8IFG |= BIT1;
+//    P8IES &=  ~BIT1;
+//    P8IE |= BIT1;
+//    P8IFG |= BIT1;
 
     TA0CCTL0 = 0;                           // TACCR0 interrupt disabled
     TA1CCTL0 = 0;                           // TACCR0 interrupt disabled
-//    TA0CCR0 = 24000L;                       // 6 ms @ 4e6 Hz clk
     TA0CCR0 = 48000L;                       // 6 ms @ 8e6 Hz clk
     TA0CTL = TASSEL__SMCLK | TACLR;         // SMCLK
     TA1CTL = TACLR;
@@ -186,7 +180,7 @@ void mcu_init()
 
     // 16 sec w/ 32.768 kHz ACLK
     // TODO: Re-enable
-//    WDTCTL = WDTPW | WDTSSEL__ACLK | WDTCNTCL | WDTIS__512K;
+//     WDTCTL = WDTPW | WDTSSEL__ACLK | WDTCNTCL | WDTIS__512K;
 
     __enable_interrupt();
 }
@@ -403,9 +397,9 @@ int enable_pin_interrupt(int pin, int edge)
     char cur_ie = *gpio_ie_for_port[port];
     *gpio_ie_for_port[port] = cur_ie | (1 << pin_num);
 
-//    // TODO: Why was this here?
-//    char cur_ifg = *gpio_ifg_for_port[port];
-//    *gpio_ifg_for_port[port] = cur_ifg | (1 << pin_num);
+    // Clear any pending interrupts on this pin
+    // You may not want this in the future...
+    *gpio_ifg_for_port[port] &= ~(1 << pin_num);
 
     __enable_interrupt(); // enable all interrupts
 

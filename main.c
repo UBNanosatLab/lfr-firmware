@@ -10,9 +10,15 @@
 #define OSC_TYPE    OPT_TCXO
 #define FREQ_OFFSET 0
 
-#define NSEL_PIN    0x63
-#define SDN_PIN     0x13
-#define INT_PIN     0x57
+#define NSEL_PIN    0x37
+#define SDN_PIN     0x24
+#define INT_PIN     0x53
+#define GPIO0       0x20
+
+#define GATE_CHAN   0
+#define TCXO_CHAN   1
+#define VSET_CHAN   2
+#define ISET_CHAN   3
 
 struct si446x_device dev;
 uint8_t buf[255];
@@ -23,8 +29,11 @@ uint8_t sys_stat = 0;
 volatile bool do_pong = false;
 volatile bool radio_irq = true;
 
-uint16_t tx_gate_bias = 0xDF0; // ~29 dBm
+//uint16_t tx_gate_bias = 0xDF0; // ~29 dBm
 //uint16_t tx_gate_bias = 0xA80; // ~0 dBm
+
+// WARNING: Double check the Si4464 output power if you change this!!
+const uint16_t tx_gate_bias = 0x000; // No amplifier
 
 
 void rx_cb(struct si446x_device *dev, int err, int len, uint8_t *data);
@@ -62,6 +71,8 @@ void rx_cb(struct si446x_device *dev, int err, int len, uint8_t *data)
         return;
     }
 
+
+
     if (len == 4 && data[0] == 'P' && data[1] == 'I' && data[2] == 'N'
         && data[3] == 'G') {
 
@@ -85,15 +96,39 @@ void rx_cb(struct si446x_device *dev, int err, int len, uint8_t *data)
     si446x_recv_async(dev, 255, buf, rx_cb);
 }
 
+int set_dac_output(uint8_t chan, uint16_t val) {
+    if (chan > 3 || val > 0xFFF) {
+        return -EINVAL;
+    }
+
+
+    // Multi-write (doesn't update EEPROM)
+    // -----------------------------------------------
+    // Byte 1: 0    1    0    0    0    DAC1 DAC0 UDAC
+    // Byte 2: VREF PD1  PD0  Gx   D11  D10  D9   D8
+    // Byte 3: D7   D6   D5   D4   D3   D2   D1   D0
+
+    uint8_t cmd[] = {
+        0x40 | (chan << 1) | 0x00,      // Multiwrite | channel | ~UDAC (update immediately)
+        0x80 | 0x00 | 0x00 | val >> 8,  // VREF = VDD | PD = Normal operation | Gain = x1 | val[11:8]
+        val & 0xFF                      // val[7:0]
+    };
+
+    int len = i2c_write(0x60, cmd, sizeof(cmd));
+    return len == sizeof(cmd) ? ESUCCESS : -EINVALSTATE;
+}
+
 int set_gate_bias(uint16_t bias)
 {
-    uint8_t cmd[] = {
-        0x40, // Write DAC register, normal mode
-        bias >> 4,
-        bias << 4
-    };
-    int len = i2c_write(0x61, cmd, sizeof(cmd));
-    return len == sizeof(cmd) ? ESUCCESS : -EINVALSTATE;
+    return set_dac_output(GATE_CHAN, bias);
+}
+
+void error(int err, char *file, int line) {
+    printf("Error: %s (%d) at %s:%d\n", "" /* strerror[err] */ , err, file, line);
+    gpio_config(0x40, OUTPUT);
+    gpio_write(0x40, HIGH);
+    __disable_interrupt();
+    while (1) LPM0;
 }
 
 int main(void)
@@ -106,56 +141,59 @@ int main(void)
     uart_init();
 
     //Power-on tests
-//    printf("hello world this is the right port\n");
+    printf("LFR Starting up...\n");
     reply(sys_stat, CMD_RESET, 0, NULL);
-
-    gpio_config(0x10, OUTPUT);
-    gpio_write(0x10, LOW);
-    gpio_config(0x11, OUTPUT);
-    gpio_write(0x11, LOW);
 
     i2c_init();
     err = set_gate_bias(0x000);
 
     if (err) {
-        gpio_write(0x10, HIGH);
-        mcu_reset();
+        error(-err, __FILE__, __LINE__);
+        return err;
     }
 
     si446x_create(&dev, NSEL_PIN, SDN_PIN, INT_PIN, XTAL_FREQ, OSC_TYPE);
 
-    enable_pin_interrupt(0x81, RISING);
-    enable_pin_interrupt(0x57, FALLING);
-
     err = si446x_init(&dev);
     if (err) {
-        gpio_write(0x10, HIGH);
-        mcu_reset();
+        error(-err, __FILE__, __LINE__);
+        return err;
     }
 
     err = si446x_set_frequency(&dev, 434000000L + FREQ_OFFSET);
     if (err) {
-        gpio_write(0x10, HIGH);
-        mcu_reset();
+        error(-err, __FILE__, __LINE__);
+        return err;
     }
 
     err = si446x_config_crc(&dev, CRC_SEED_1 | CRC_CCIT_16);
     if (err) {
-        gpio_write(0x10, HIGH);
-        mcu_reset();
+        error(-err, __FILE__, __LINE__);
+        return err;
     }
 
     err = si446x_set_tx_pwr(&dev, 0x14);
     if (err) {
-        gpio_write(0x10, HIGH);
-        mcu_reset();
+        error(-err, __FILE__, __LINE__);
+        return err;
     }
 
-    err = si446x_cfg_gpio(&dev, 0x1A, 0x14, 0x11, 0x21);
+    err = si446x_cfg_gpio(&dev, GPIO_SYNC_WORD_DETECT, GPIO_TX_DATA, GPIO_TX_DATA_CLK, GPIO_RX_STATE);
     if (err) {
-        gpio_write(0x10, HIGH);
-        mcu_reset();
+        error(-err, __FILE__, __LINE__);
+        return err;
     }
+
+    err = set_dac_output(TCXO_CHAN, 0x4E8);
+    if (err) {
+        error(-err, __FILE__, __LINE__);
+        return err;
+    }
+
+    printf("Successfully initialized Si4464!\n");
+
+    enable_pin_interrupt(GPIO0, RISING);
+    enable_pin_interrupt(INT_PIN, FALLING);
 
     uint8_t rst[] = {'R', 'E', 'S', 'E', 'T'};
 
@@ -164,16 +202,26 @@ int main(void)
     set_gate_bias(0x000);
 
     if (err) {
-        gpio_write(0x10, HIGH);
-        mcu_reset();
+        error(-err, __FILE__, __LINE__);
+        return err;
     }
 
     sys_stat &= ~(FLAG_TXBUSY);
     err = si446x_recv_async(&dev, 255, buf, rx_cb);
-    if (err) {
-        gpio_write(0x10, HIGH);
-        mcu_reset();
-    }
+
+//    // TX PSR
+//    err = si446x_set_mod_type(&dev, MOD_SRC_RAND | MOD_TYPE_2GFSK);
+//    if (err) {
+//        error(-err, __FILE__, __LINE__);
+//        return err;
+//    }
+//
+//    err = si446x_fire_tx(&dev);
+//    if (err) {
+//        error(-err, __FILE__, __LINE__);
+//        return err;
+//    }
+
 
     // Main loop
     while (true) {
@@ -182,9 +230,8 @@ int main(void)
             radio_irq = false;
             err = si446x_update(&dev);
             if (err) {
-//                printf("Err: %d", err);
+                printf("Err: %d", err);
                 si446x_reset(&dev);
-                gpio_write(0x10, HIGH);
                 reply_error(sys_stat, -err);
             }
         } else if(uart_available()) {
@@ -203,10 +250,10 @@ __interrupt void irq_isr()
     radio_irq = true;
 }
 
-#pragma vector=PORT8_VECTOR
+#pragma vector=PORT2_VECTOR
 __interrupt void sync_word_isr()
 {
-    P8IFG = 0;
+    P2IFG &= ~(1 << (GPIO0 & 0x0F));
     TA0CTL |= TACLR;                        // Clear count
     TA0CTL |= MC__UP;                       // Start timer in UP mode
     TA0CCTL0 = CCIE;                        // TACCR0 interrupt enabled

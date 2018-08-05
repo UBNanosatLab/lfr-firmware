@@ -6,58 +6,29 @@
  */
 #include <msp430.h>
 #include "rbuf.h"
-#define UART_PINS_BOOSTERPACK
-//#define UART_PINS_BACKCHANNEL
 
 //case-dependent aliases for pins and peripheral things
-#ifdef UART_PINS_BOOSTERPACK
-#define PxSEL1 P6SEL1
-#define PxSEL0 P6SEL0
-#define UCAxCTLW0 UCA3CTLW0
-#define UCAxBRW UCA3BRW
-#define UCAxMCTLW UCA3MCTLW
-#define UCAxIE UCA3IE
-#define UCAxIV UCA3IV
-#define UCAxIFG UCA3IFG
-#define UCAxTXBUF UCA3TXBUF
-#define UCAxRXBUF UCA3RXBUF
-#define EUSCI_Ax_VECTOR EUSCI_A3_VECTOR
-#define USCI_Ax_ISR USCI_A3_ISR
-#endif
-
-#ifdef UART_PINS_BACKCHANNEL
-#define PxSEL1 P2SEL1
-#define PxSEL0 P2SEL0
-#define UCAxCTLW0 UCA0CTLW0
-#define UCAxBRW UCA0BRW
-#define UCAxMCTLW UCA0MCTLW
-#define UCAxIE UCA0IE
-#define UCAxIV UCA0IV
-#define UCAxIFG UCA0IFG
-#define UCAxTXBUF UCA0TXBUF
-#define UCAxRXBUF UCA0RXBUF
-#define EUSCI_Ax_VECTOR EUSCI_A0_VECTOR
-#define USCI_Ax_ISR USCI_A0_ISR
-#endif
+#define UCAxCTLW0 UCA2CTLW0
+#define UCAxBRW UCA2BRW
+#define UCAxMCTLW UCA2MCTLW
+#define UCAxIE UCA2IE
+#define UCAxIV UCA2IV
+#define UCAxIFG UCA2IFG
+#define UCAxTXBUF UCA2TXBUF
+#define UCAxRXBUF UCA2RXBUF
+#define EUSCI_Ax_VECTOR EUSCI_A2_VECTOR
+#define USCI_Ax_ISR USCI_A2_ISR
 
 rbuf txbuf, rxbuf;
 uint8_t uartInitialized=0;
 
-    /*
-     * initUartPins()
-     * Sets Port 6 pins 0 and 1 to eUSCI_A3 TXD and RXD, respectively
-     */
-void uart_init_pins(){
-#ifdef UART_PINS_BACKCHANNEL
-    PxSEL1 |= (BIT0 | BIT1);
-    PxSEL0 &= ~(BIT0 | BIT1);    // USCI_A3 UART operation
-#endif
 
-#ifdef UART_PINS_BOOSTERPACK
-    // Opposite for boosterpack as for backchannel. WHY TI?
-    PxSEL0 |= (BIT0 | BIT1);
-    PxSEL1 &= ~(BIT0 | BIT1);    // USCI_A3 UART operation
-#endif
+void uart_init_pins(){
+
+    // Note: the correct setting here varies by port
+    // USCI_A2 UART operation
+    P5SEL0 |= (BIT4 | BIT5);
+    P5SEL1 &= ~(BIT4 | BIT5);
 }
 
 
@@ -65,10 +36,11 @@ int uart_init(){
     uart_init_pins();
     rbuf_init(&rxbuf);
     rbuf_init(&txbuf);
-    // Configure USCI_A3 for UART mode
-    UCAxCTLW0 = UCSWRST;                    // Put eUSCI in reset
-    UCAxCTLW0 |= UCSSEL__SMCLK;             // CLK = SMCLK
+    // Configure USCI_Ax for UART mode
+    UCAxCTLW0 = UCSWRST;                // Put eUSCI in reset
+    UCAxCTLW0 |= UCSSEL__SMCLK;         // CLK = SMCLK
 
+    // Assuming 8 MHz SMCLK
     // See User's Guide Table 30-5 on page 779
 
     // 9600 baud
@@ -87,10 +59,10 @@ int uart_init(){
     UCAxMCTLW = UCOS16 | UCBRF_5 | 0x5500;
 
 
-    UCAxCTLW0 &= ~UCSWRST;                  // Initialize eUSCI
-    //UCAxIE |= UCRXIE | UCTXIE;                       // Enable USCI_Ax RX interrupt
-    UCAxIE |= UCRXIE;
-    __bis_SR_register(GIE);   // enable global interrupts
+    UCAxCTLW0 &= ~UCSWRST;              // Initialize eUSCI
+
+    UCAxIE |= UCRXIE;                   // Enable USCI_Ax RX interrupt
+    __bis_SR_register(GIE);             // enable global interrupts
     return 0;
 }
 
@@ -141,7 +113,7 @@ char uart_getc(){
 #pragma vector=EUSCI_Ax_VECTOR
 __interrupt void USCI_Ax_ISR(void)
 #elif defined(__GNUC__)
-void __attribute__ ((interrupt(EUSCI_A3_VECTOR))) USCI_Ax_ISR (void)
+void __attribute__ ((interrupt(EUSCI_Ax_VECTOR))) USCI_Ax_ISR (void)
 #else
 #error Compiler not supported!
 #endif
