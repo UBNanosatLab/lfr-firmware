@@ -46,6 +46,31 @@ static volatile unsigned char *const gpio_out_for_port[] =
     &P8OUT,
 };
 
+static volatile unsigned char *const gpio_in_for_port[] =
+{
+    0x0000,
+    &P1IN,
+    &P2IN,
+    &P3IN,
+    &P4IN,
+    &P5IN,
+    &P6IN,
+    &P7IN,
+    &P8IN,
+};
+
+static volatile unsigned char *const gpio_ren_for_port[] =
+{
+    0x0000,
+    &P1REN,
+    &P2REN,
+    &P3REN,
+    &P4REN,
+    &P5REN,
+    &P6REN,
+    &P7REN,
+    &P8REN,
+};
 static volatile unsigned char *const gpio_ie_for_port[] =
 {
     0x0000,
@@ -303,10 +328,24 @@ void gpio_config(int pin, int mode)
 {
     unsigned int port = (pin >> 4) & 0x0F;
     unsigned int pin_num = (pin >> 0) & 0x07;
+    unsigned char pull_enable = (mode & 0x20);
+    unsigned char pull_direction = (mode & 0x10);
 
+    /* Set pin direction */
     char cur_dir = *gpio_dir_for_port[port];
 
-    *gpio_dir_for_port[port] = mode ? cur_dir | (1 << pin_num) : cur_dir & ~(1 << pin_num);
+    *gpio_dir_for_port[port] = (mode & OUTPUT) ? cur_dir | (1 << pin_num) : cur_dir & ~(1 << pin_num);
+
+    /* Set pull resistor to up or down, if enabled */
+    if(pull_enable)
+    {
+        gpio_write(pin, pull_direction);
+    }
+
+    /* Enable or disable pull up/down resistor */
+    char cur_ren = *gpio_ren_for_port[port];
+
+    *gpio_ren_for_port[port] = pull_enable ? cur_ren | (1 << pin_num) : cur_ren & ~(1 << pin_num);
 }
 
 void gpio_write(int pin, int value)
@@ -317,6 +356,14 @@ void gpio_write(int pin, int value)
     char cur_dir = *gpio_out_for_port[port];
 
     *gpio_out_for_port[port] = value ? cur_dir | (1 << pin_num) : cur_dir & ~(1 << pin_num);
+}
+
+unsigned char gpio_read(int pin)
+{
+    unsigned int port = (pin >> 4) & 0x0F;
+    unsigned int pin_num = (pin >> 0) & 0x07;
+
+    return (*gpio_in_for_port[port] & (1 << pin_num)) != 0;
 }
 
 static unsigned char spi_xfer(unsigned char b)

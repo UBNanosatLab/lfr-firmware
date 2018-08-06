@@ -9,6 +9,8 @@
 
 #define INPUT 0x0
 #define OUTPUT 0x1
+#define INPUT_PULLUP 0x30
+#define INPUT_PULLDOWN 0x20
 
 #define RISING 0x00
 #define FALLING 0x01
@@ -29,6 +31,7 @@ void spi_read_data(int len, unsigned char *data);
 
 void gpio_config(int pin, int mode);
 void gpio_write(int pin, int value);
+unsigned char gpio_read(int pin);
 int enable_pin_interrupt(int pin, int edge);
 
 void delay_micros(unsigned long micros);
