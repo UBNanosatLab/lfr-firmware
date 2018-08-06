@@ -128,6 +128,12 @@ static volatile unsigned char *const gpio_ies_for_port[] =
     &P8IES,
 };
 
+/**
+ * @brief Initialize the backchannel/debug UART
+ *
+ * Configures pins, sets baud rate, and enables UCA1 as the
+ * backchannel/debug UART for printf-style output at 9600 baud
+ */
 
 void bc_uart_init()
 {
@@ -171,6 +177,16 @@ int fputs(const char *_ptr, register FILE *_fp)
   return len;
 }
 
+/**
+ * @brief Initialize system clocks
+ *
+ * Sets DCO to 16 MHz to be used as a fallback,
+ * sets main and subsystem clock dividers to 2, to run at 8 MHz,
+ * configures the HFXT for operation with the 16 MHz crystal,
+ * waits for it to stabilize, and switches the main clock to the HFXT.
+ *
+ * Routes VLO to ACLK.
+ */
 void init_clock()
 {
     // PJSEL0 |= BIT4 | BIT5;                                  // Set up external 32kHz xtal pins
@@ -236,6 +252,12 @@ void mcu_reset(){
     WDTCTL = 0;
 }
 
+/** @brief Initialize internal I2C bus
+ *
+ * Configures UCB2 for I2C operation on pins 7.0 and 7.1
+ * Initialization of the peripheral is preceded by a series of pulses on SCL
+ * to free the bus in case it was left in mid-transaction by a reset
+ */
 void i2c_init(){
 
     P7DIR |= BIT1; //set SCL to output
@@ -261,6 +283,16 @@ void i2c_init(){
     UCB2IE |= UCTXIE0 | UCNACKIE;           // transmit and NACK interrupt enable
 }
 
+/**
+ * @brief Blocking write to an I2C slave
+ *
+ * Writes a buffer to an I2C slave device, returning when the transfer has
+ * completed or a NACK has been received.
+ * @param slave_addr The 7-bit slave address
+ * @param buf Pointer to the data to be written
+ * @param len Number of bytes to write
+ * @return Number of bytes successfully written. -1 indicates that the address byte was NACKed.
+ */
 // Returns bytes written, -1 indicates START failed (no such device?)
 int i2c_write(unsigned char slave_addr, unsigned char *buf, unsigned char len){
     while (UCB2CTLW0 & UCTXSTP);        // if there's a pending stop from a previous transaction, wait for it to be sent
@@ -332,6 +364,10 @@ void __attribute__ ((interrupt(EUSCI_B2_VECTOR))) USCI_B2_ISR (void)
     }
 }
 
+/**
+ * @brief Delay for a specified number of microseconds.
+ *        Not calibrated yet, may be significantly wrong.
+ */
 
 void delay_micros(unsigned long micros)
 {
@@ -341,6 +377,21 @@ void delay_micros(unsigned long micros)
     }
     __delay_cycles(CYC_PER_US - FOR_LOOP_CYC);
 }
+
+/**
+ * @brief Set input/output mode of a GPIO pin
+ *
+ * Configures a GPIO pin for input or output, with optional pull-up or
+ * pull-down resistor for inputs.  Currently does not check if the pin has
+ * been configured for a module function, which would prevent the parameters
+ * configured here from having any effect.
+ *
+ * @param pin The pin to configure.  Takes a single byte, whose upper nibble
+ *            specifies the port, and lower nibble specifies the pin.  E.g.
+ *            0x23 translates to port 2, pin 3
+ * @param mode The mode to set the pin to.  Use one of the macros OUTPUT,
+ *             INPUT, INPUT_PULLUP, or INPUT_PULLDOWN
+ */
 
 void gpio_config(int pin, int mode)
 {
@@ -366,6 +417,19 @@ void gpio_config(int pin, int mode)
     *gpio_ren_for_port[port] = pull_enable ? cur_ren | (1 << pin_num) : cur_ren & ~(1 << pin_num);
 }
 
+/**
+ * @brief Write a value to a GPIO pin
+ *
+ * If the pin has been configured as an output, write the specified state to
+ * it. If the pin is an input with the pull resistor enabled, it will instead
+ * set the state to which the pin is pulled.
+ *
+ * @param pin The pin to configure.  Takes a single byte, whose upper nibble
+ *            specifies the port, and lower nibble specifies the pin.  E.g.
+ *            0x23 translates to port 2, pin 3
+ * @param value The value to write to the pin
+ */
+
 void gpio_write(int pin, int value)
 {
     unsigned int port = (pin >> 4) & 0x0F;
@@ -376,6 +440,15 @@ void gpio_write(int pin, int value)
     *gpio_out_for_port[port] = value ? cur_dir | (1 << pin_num) : cur_dir & ~(1 << pin_num);
 }
 
+/**
+ * @brief Read from a GPIO pin
+ *
+ * @param pin The pin to configure.  Takes a single byte, whose upper nibble
+ *            specifies the port, and lower nibble specifies the pin.  E.g.
+ *            0x23 translates to port 2, pin 3
+ * @return The state of the GPIO pin's bit in the PxIN register
+ */
+
 unsigned char gpio_read(int pin)
 {
     unsigned int port = (pin >> 4) & 0x0F;
@@ -384,6 +457,12 @@ unsigned char gpio_read(int pin)
     return (*gpio_in_for_port[port] & (1 << pin_num)) != 0;
 }
 
+/**
+ * @brief Perform a one-byte transfer over SPI
+ *
+ * @param b The byte to send
+ * @return The byte received
+ */
 static unsigned char spi_xfer(unsigned char b)
 {
 
@@ -400,6 +479,12 @@ static unsigned char spi_xfer(unsigned char b)
     return UCB1RXBUF;
 }
 
+/**
+ * @brief Initialize UCB1 for SPI operation
+ *
+ * Configures UCB1 to operate in SPI mode, with SCLK on P5.2, MISO on P5.1,
+ * and MOSI on P5.0, with speed controlled by SMLCK and the SPI_CLKDIV macro
+ */
 void spi_init()
 {
     /* Put USCI in reset mode, source clock from SMCLK. */
@@ -429,11 +514,20 @@ void spi_init()
     UCB1CTLW0 &= ~UCSWRST;
 }
 
+/**
+ * @brief Send a byte over SPI while ignoring return traffic
+ */
 void spi_write_byte(unsigned char b)
 {
     spi_xfer(b);
 }
 
+/**
+ * @brief Write a buffer over SPI while ignoring return traffic.  Blocking.
+ *
+ * @param len The number of bytes to write
+ * @param data Pointer to the bytes to be sent
+ */
 void spi_write_data(int len, const unsigned char *data)
 {
     unsigned int i;
@@ -442,6 +536,12 @@ void spi_write_data(int len, const unsigned char *data)
     }
 }
 
+/**
+ * @brief Read from SPI into a buffer, while sending 0xFF.  Blocking.
+ *
+ * @param len The number of bytes to send and read
+ * @param data The buffer into which received data will be written
+ */
 void spi_read_data(int len, unsigned char *data)
 {
     unsigned int i;
@@ -450,6 +550,19 @@ void spi_read_data(int len, unsigned char *data)
     }
 }
 
+/**
+ * @brief Enable a GPIO pin interrupt
+ *
+ * Enables an edge-triggered interrupt on a GPIO pin.  Does not handle
+ * configuring the input state of the pin.  Clears pending interrupts
+ * before enabling the new interrupt.  Won't do much good unless you have
+ * set up the appropriate port ISR to handle the pin in question.
+ *
+ * @param pin The pin to configure.  Takes a single byte, whose upper nibble
+ *            specifies the port, and lower nibble specifies the pin.  E.g.
+ *            0x23 translates to port 2, pin 3
+ * @param edge Use the RISING or FALLING macro
+ */
 int enable_pin_interrupt(int pin, int edge)
 {
     __disable_interrupt();
