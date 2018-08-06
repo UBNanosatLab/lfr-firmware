@@ -33,6 +33,9 @@
 #define INT_PIN     0x53
 #define GPIO0       0x20
 
+#define PA_PWR_EN_PIN 0x43
+#define PA_PGOOD_PIN 0x74
+
 #define GATE_CHAN   0
 #define TCXO_CHAN   1
 #define VSET_CHAN   2
@@ -128,7 +131,7 @@ int set_dac_output(uint8_t chan, uint16_t val) {
 
     uint8_t cmd[] = {
         0x40 | (chan << 1) | 0x00,      // Multiwrite | channel | ~UDAC (update immediately)
-        0x80 | 0x00 | 0x00 | val >> 8,  // VREF = VDD | PD = Normal operation | Gain = x1 | val[11:8]
+        0x80 | 0x00 | 0x10 | val >> 8,  // VREF = 2.048V internal | PD = Normal operation | Gain = x2 | val[11:8]
         val & 0xFF                      // val[7:0]
     };
 
