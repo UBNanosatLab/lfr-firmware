@@ -154,6 +154,35 @@ int main(void)
         error(-err, __FILE__, __LINE__);
         return err;
     }
+    /*
+     * Buck converter test
+     */
+    printf("\r\nSetting PA_VSET to 0.500V\r\n");
+    err = set_dac_output(VSET_CHAN, 500); //with 4.096V full-scale, this just takes millivolts
+    if (err) {
+         error(-err, __FILE__, __LINE__);
+         return err;
+     }
+    printf("Setting PA_ISET to 0.100V\r\n");
+    err = set_dac_output(ISET_CHAN, 100);
+    if (err) {
+             error(-err, __FILE__, __LINE__);
+             return err;
+    }
+    printf("Enabling buck converter\r\n");
+    gpio_config(PA_PGOOD_PIN, INPUT_PULLUP);
+    gpio_config(PA_PWR_EN_PIN, OUTPUT);
+    gpio_write(PA_PWR_EN_PIN, 1);
+    printf("And sitting here.\r\n");
+    while(1){
+        printf("PA_PGOOD = %d\r\n", gpio_read(PA_PGOOD_PIN));
+        __delay_cycles(4000000);
+    }
+
+    /*
+     * End buck converter test
+     */
+
 
     si446x_create(&dev, NSEL_PIN, SDN_PIN, INT_PIN, XTAL_FREQ, OSC_TYPE);
 
