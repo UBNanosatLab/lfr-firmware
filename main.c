@@ -28,13 +28,18 @@
 #define OSC_TYPE    OPT_TCXO
 #define FREQ_OFFSET 0
 
-#define NSEL_PIN    0x37
-#define SDN_PIN     0x24
-#define INT_PIN     0x53
-#define GPIO0       0x20
-
-#define PA_PWR_EN_PIN 0x43
-#define PA_PGOOD_PIN 0x74
+// Pin definitions for Rev. 1A
+#define NSEL_PIN        0x37
+#define SDN_PIN         0x24
+#define INT_PIN         0x53
+#define GPIO0           0x20
+#define GPIO1           0x44
+#define GPIO2           0x36
+#define GPIO3           0x35
+#define TX_ACT_PIN      0x15
+#define PA_IMON_PIN     0x42
+#define PA_PWR_EN_PIN   0x43
+#define PA_PGOOD_PIN    0x74
 
 #define GATE_CHAN   0
 #define TCXO_CHAN   1
@@ -54,12 +59,23 @@ volatile bool radio_irq = true;
 //uint16_t tx_gate_bias = 0xA80; // ~0 dBm
 
 // WARNING: Double check the Si4464 output power if you change this!!
-const uint16_t tx_gate_bias = 0x000; // No amplifier
+
+//const uint16_t tx_gate_bias = 0x000; // No amplifier
+const uint16_t tx_gate_bias = 500; //0.5V bias is enough to see in testing, but very very low output power
+//const uint16_t tx_gate_bias = 2500; //at 430 MHz, the PA is just starting to amplify at Vgg=2.5V
+const uint16_t tx_vdd = 500; //5V will wake the PA up, but dissipate little heat even with a lot of gate bias
+const uint16_t pa_ilimit = 500; // 1A is a bit more than the RA07H4047M draws at Vdd=5V, Vgg=3.5V, Pin=13dBm
+const uint16_t tx_vdd_delay = 2000; // 2ms is plenty for the example 5V/1A values
 
 
 void rx_cb(struct si446x_device *dev, int err, int len, uint8_t *data);
 void tx_cb(struct si446x_device *dev, int err);
-int set_gate_bias(uint16_t bias);
+int set_gate_bias(uint16_t bias); // 1mV/LSB, up to VDD (~3300)
+int set_drain_voltage(uint16_t vdd); // Approximately 10mV/LSB (97 = 1V)
+int set_current_limit(uint16_t ilim); // 2mA/LSB, up to 1000 (2A)
+
+int pre_transmit();
+int post_transmit();
 
 void set_cmd_flag(uint8_t flag){
     sys_stat &= ~(FLAG_GOODCMD | FLAG_INVALID | FLAG_BADSUM);
@@ -72,7 +88,7 @@ void tx_cb(struct si446x_device *dev, int err)
         reply_error(sys_stat, (uint8_t) -err);
     }
 
-    set_gate_bias(0x000);
+    post_transmit();
     sys_stat &= ~(FLAG_TXBUSY);
     si446x_recv_async(dev, 255, buf, rx_cb);
     wdt_feed();
@@ -104,6 +120,7 @@ void rx_cb(struct si446x_device *dev, int err, int len, uint8_t *data)
             'G',
         };
         sys_stat |= FLAG_TXBUSY;
+        gpio_write(TX_ACT_PIN, HIGH);
         err = set_gate_bias(tx_gate_bias);
         si446x_setup_tx(dev, sizeof(resp), resp, tx_cb);
         do_pong = true;
@@ -144,6 +161,43 @@ int set_gate_bias(uint16_t bias)
     return set_dac_output(GATE_CHAN, bias);
 }
 
+int set_drain_voltage(uint16_t vdd)
+{
+    return set_dac_output(VSET_CHAN, vdd);
+}
+
+int set_current_limit(uint16_t ilim)
+{
+    return set_dac_output(ISET_CHAN, ilim);
+}
+
+int pre_transmit()
+{
+    int err;
+    gpio_write(PA_PWR_EN_PIN, HIGH);
+    err = set_current_limit(pa_ilimit);
+    if(err) return err;
+    err = set_drain_voltage(tx_vdd);
+    if(err) return err;
+    err = set_gate_bias(tx_gate_bias);
+    if(err) return err;
+    delay_micros(tx_vdd_delay);
+    return 0;
+}
+
+int post_transmit()
+{
+    int err;
+    gpio_write(PA_PWR_EN_PIN, LOW);
+    err = set_gate_bias(0);
+    if(err) return err;
+    err = set_drain_voltage(0);
+    if(err) return err;
+    err = set_current_limit(0);
+    if(err) return err;
+    return 0;
+}
+
 void error(int err, char *file, int line) {
     printf("Error: %s (%d) at %s:%d\n", "" /* strerror[err] */ , err, file, line);
     gpio_config(0x40, OUTPUT);
@@ -160,6 +214,11 @@ int main(void)
 
     mcu_init();
     uart_init();
+
+    gpio_config(TX_ACT_PIN, OUTPUT);
+    gpio_write(TX_ACT_PIN, LOW);
+    gpio_config(PA_PWR_EN_PIN, OUTPUT);
+    gpio_write(PA_PWR_EN_PIN, LOW);
 
     //Power-on tests
     printf("LFR Starting up...\n");
@@ -218,9 +277,11 @@ int main(void)
 
     uint8_t rst[] = {'R', 'E', 'S', 'E', 'T'};
 
+    gpio_write(TX_ACT_PIN, HIGH);
     set_gate_bias(tx_gate_bias);
     err = si446x_send(&dev, sizeof(rst), rst);
     set_gate_bias(0x000);
+    gpio_write(TX_ACT_PIN, LOW);
 
     if (err) {
         error(-err, __FILE__, __LINE__);

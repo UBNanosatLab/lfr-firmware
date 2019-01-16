@@ -51,7 +51,8 @@ void cmd_tx_data(int len, uint8_t *data) {
     memcpy(buf, data, len);
 
     sys_stat |= FLAG_TXBUSY;
-    set_gate_bias(tx_gate_bias);
+    pre_transmit();
+
     int err = si446x_send_async(&dev, len, buf, tx_cb);
 
     if (err) {
