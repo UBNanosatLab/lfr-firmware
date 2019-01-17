@@ -54,4 +54,6 @@ int enable_pin_interrupt(int pin, int edge);
 
 void delay_micros(unsigned long micros);
 
+void get_device_uid(unsigned char* buf);
+
 #endif

@@ -29,6 +29,7 @@
 //#define F_SMCLK         (4000000ul)
 #define F_SMCLK         (8000000ul)
 
+#define TLV_SILICON_UID_BASE (0x01A0A)
 
 #define SPI_CLKDIV      (F_SMCLK / 1000000L) //0.5 MHz SPI
 #define FREQ_I2C (400000ul)
@@ -582,4 +583,21 @@ int enable_pin_interrupt(int pin, int edge)
     __enable_interrupt(); // enable all interrupts
 
     return 0;
+}
+
+/**
+ * @brief Get the microcontroller's unique ID
+ *
+ * The MSP430 implementation reads the 32-bit wafer/lot ID and the 16-bit X and Y
+ * die positions.  This is globally unique among MSP430s.
+ *
+ * @param buf  A buffer of at least 8 bytes into which the ID will be written
+ */
+void get_device_uid(unsigned char* buf){
+    uint8_t *tlv = (uint8_t*)TLV_SILICON_UID_BASE;
+    int i=0;
+    for(;i<8; i++){
+        buf[i] = *tlv;
+        tlv++;
+    }
 }
