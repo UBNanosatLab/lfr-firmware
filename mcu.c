@@ -565,6 +565,8 @@ void spi_read_data(int len, unsigned char *data)
  */
 int enable_pin_interrupt(int pin, int edge)
 {
+    int sr;
+    sr = __get_SR_register();         //store existing interrupt state
     __disable_interrupt();
     unsigned int port = (pin >> 4) & 0x0F;
     unsigned int pin_num = (pin >> 0) & 0x07;
@@ -579,7 +581,7 @@ int enable_pin_interrupt(int pin, int edge)
     // You may not want this in the future...
     *gpio_ifg_for_port[port] &= ~(1 << pin_num);
 
-    __enable_interrupt(); // enable all interrupts
+    __set_interrupt_state(sr);          //restore previous interrupt state
 
     return 0;
 }
@@ -597,6 +599,8 @@ int enable_pin_interrupt(int pin, int edge)
  */
 
 int disable_pin_interrupt(int pin){
+    int sr;
+    sr = __get_SR_register();         //store existing interrupt state
     __disable_interrupt();
     unsigned int port = (pin >> 4) & 0x0F;
     unsigned int pin_num = (pin >> 0) & 0x07;
@@ -604,5 +608,6 @@ int disable_pin_interrupt(int pin){
     char cur_ie = *gpio_ie_for_port[port];
     *gpio_ie_for_port[port] = cur_ie & ~(1 << pin_num);
 
-    __enable_interrupt(); // enable all interrupts
+    __set_interrupt_state(sr);          //restore previous interrupt state
+    return 0;
 }
