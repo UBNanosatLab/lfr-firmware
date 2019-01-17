@@ -23,10 +23,10 @@
 #include "mcu.h"
 #include "msp430_uart.h"
 #include "cmd_parser.h"
+#include "settings.h"
 
 #define XTAL_FREQ   26000000L
 #define OSC_TYPE    OPT_TCXO
-#define FREQ_OFFSET 0
 
 // Pin definitions for Rev. 1A
 #define NSEL_PIN        0x37
@@ -55,24 +55,12 @@ uint8_t sys_stat = 0;
 volatile bool do_pong = false;
 volatile bool radio_irq = true;
 
-//uint16_t tx_gate_bias = 0xDF0; // ~29 dBm
-//uint16_t tx_gate_bias = 0xA80; // ~0 dBm
-
-// WARNING: Double check the Si4464 output power if you change this!!
-
-//const uint16_t tx_gate_bias = 0x000; // No amplifier
-const uint16_t tx_gate_bias = 500; //0.5V bias is enough to see in testing, but very very low output power
-//const uint16_t tx_gate_bias = 2500; //at 430 MHz, the PA is just starting to amplify at Vgg=2.5V
-const uint16_t tx_vdd = 500; //5V will wake the PA up, but dissipate little heat even with a lot of gate bias
-const uint16_t pa_ilimit = 500; // 1A is a bit more than the RA07H4047M draws at Vdd=5V, Vgg=3.5V, Pin=13dBm
-const uint16_t tx_vdd_delay = 2000; // 2ms is plenty for the example 5V/1A values
-
-
 void rx_cb(struct si446x_device *dev, int err, int len, uint8_t *data);
 void tx_cb(struct si446x_device *dev, int err);
-int set_gate_bias(uint16_t bias); // 1mV/LSB, up to VDD (~3300)
-int set_drain_voltage(uint16_t vdd); // Approximately 10mV/LSB (97 = 1V)
-int set_current_limit(uint16_t ilim); // 2mA/LSB, up to 1000 (2A)
+
+int set_gate_bias(uint16_t bias_mv);
+int set_drain_voltage(uint16_t vdd_mv);
+int set_current_limit(uint16_t ilim_ma);
 
 int pre_transmit();
 int post_transmit();
@@ -121,7 +109,7 @@ void rx_cb(struct si446x_device *dev, int err, int len, uint8_t *data)
         };
         sys_stat |= FLAG_TXBUSY;
         gpio_write(TX_ACT_PIN, HIGH);
-        err = set_gate_bias(tx_gate_bias);
+        err = set_gate_bias(settings.tx_gate_bias);
         si446x_setup_tx(dev, sizeof(resp), resp, tx_cb);
         do_pong = true;
 
@@ -156,32 +144,44 @@ int set_dac_output(uint8_t chan, uint16_t val) {
     return len == sizeof(cmd) ? ESUCCESS : -EINVALSTATE;
 }
 
-int set_gate_bias(uint16_t bias)
+int set_gate_bias(uint16_t bias_mv)
 {
-    return set_dac_output(GATE_CHAN, bias);
+    // Already 1 mV / LSB
+    return set_dac_output(GATE_CHAN, bias_mv);
 }
 
-int set_drain_voltage(uint16_t vdd)
+int set_drain_voltage(uint16_t vdd_mv)
 {
-    return set_dac_output(VSET_CHAN, vdd);
+    // 97 counts = 1V
+    // So 99 counts = 1024 mv
+    return set_dac_output(VSET_CHAN, (uint16_t)((vdd_mv * (uint32_t)99) >> 10));
 }
 
-int set_current_limit(uint16_t ilim)
+int set_current_limit(uint16_t ilim_ma)
 {
-    return set_dac_output(ISET_CHAN, ilim);
+    // 2mA/LSB, up to 1000 (2A)
+    return set_dac_output(ISET_CHAN, ilim_ma >> 1);
+}
+
+int pre_transmit_no_delay()
+{
+    int err;
+    gpio_write(PA_PWR_EN_PIN, HIGH);
+    err = set_current_limit(settings.pa_ilimit);
+    if(err) return err;
+    err = set_drain_voltage(settings.tx_vdd);
+    if(err) return err;
+    err = set_gate_bias(settings.tx_gate_bias);
+    if(err) return err;
+    return 0;
 }
 
 int pre_transmit()
 {
     int err;
-    gpio_write(PA_PWR_EN_PIN, HIGH);
-    err = set_current_limit(pa_ilimit);
+    err = pre_transmit_no_delay();
     if(err) return err;
-    err = set_drain_voltage(tx_vdd);
-    if(err) return err;
-    err = set_gate_bias(tx_gate_bias);
-    if(err) return err;
-    delay_micros(tx_vdd_delay);
+    delay_micros(settings.tx_vdd_delay);
     return 0;
 }
 
@@ -211,7 +211,7 @@ int main(void)
     int err;
     WDTCTL = WDTPW | WDTHOLD;   // stop watchdog timer
 
-
+    settings_load_saved();
     mcu_init();
     uart_init();
 
@@ -222,6 +222,7 @@ int main(void)
 
     //Power-on tests
     printf("LFR Starting up...\n");
+    printf("LFR Build: %s\n", board_info.sw_ver);
     reply(sys_stat, CMD_RESET, 0, NULL);
 
     i2c_init();
@@ -240,7 +241,7 @@ int main(void)
         return err;
     }
 
-    err = si446x_set_frequency(&dev, 434000000L + FREQ_OFFSET);
+    err = si446x_set_frequency(&dev, settings.freq);
     if (err) {
         error(-err, __FILE__, __LINE__);
         return err;
@@ -264,7 +265,7 @@ int main(void)
         return err;
     }
 
-    err = set_dac_output(TCXO_CHAN, 0x4E8);
+    err = set_dac_output(TCXO_CHAN, settings.tcxo_vpull);
     if (err) {
         error(-err, __FILE__, __LINE__);
         return err;
@@ -275,34 +276,22 @@ int main(void)
     enable_pin_interrupt(GPIO0, RISING);
     enable_pin_interrupt(INT_PIN, FALLING);
 
-    uint8_t rst[] = {'R', 'E', 'S', 'E', 'T'};
-
-    gpio_write(TX_ACT_PIN, HIGH);
-    set_gate_bias(tx_gate_bias);
-    err = si446x_send(&dev, sizeof(rst), rst);
-    set_gate_bias(0x000);
-    gpio_write(TX_ACT_PIN, LOW);
-
-    if (err) {
-        error(-err, __FILE__, __LINE__);
-        return err;
-    }
-
-    sys_stat &= ~(FLAG_TXBUSY);
-    err = si446x_recv_async(&dev, 255, buf, rx_cb);
-
-//    // TX PSR
-//    err = si446x_set_mod_type(&dev, MOD_SRC_RAND | MOD_TYPE_2GFSK);
-//    if (err) {
-//        error(-err, __FILE__, __LINE__);
-//        return err;
-//    }
+//    uint8_t rst[] = {'R', 'E', 'S', 'E', 'T'};
 //
-//    err = si446x_fire_tx(&dev);
+//    gpio_write(TX_ACT_PIN, HIGH);
+//    set_gate_bias(tx_gate_bias);
+//    err = si446x_send(&dev, sizeof(rst), rst);
+//    set_gate_bias(0x000);
+//    gpio_write(TX_ACT_PIN, LOW);
+//
 //    if (err) {
 //        error(-err, __FILE__, __LINE__);
 //        return err;
 //    }
+//    sys_stat &= ~(FLAG_TXBUSY);
+
+
+    err = si446x_recv_async(&dev, 255, buf, rx_cb);
 
 
     // Main loop

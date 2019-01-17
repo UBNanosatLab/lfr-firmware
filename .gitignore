@@ -1,3 +1,5 @@
 .launches/*
 Debug/*
 *.gch
+/Debug/
+.vscode/

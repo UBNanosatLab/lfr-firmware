@@ -41,6 +41,8 @@
 #define CMD_READ_TXPWR 3
 #define CMD_SET_TXPWR 4
 #define CMD_SET_FREQ 5
+#define CMD_TX_PSR 6
+#define CMD_TX_ABORT 7
 /* not really a command, only used in spontaneous reports */
 #define CMD_RXDATA 16
 

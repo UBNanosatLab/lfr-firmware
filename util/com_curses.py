@@ -65,7 +65,7 @@ class RadioException(Exception):
 
 class Radio:
 
-    def __init__(self, port, baud=9600):
+    def __init__(self, port, baud=115200):
         self.ser = serial.Serial(port, baud)
         self.state = ParseState.SYNC_H
 
@@ -153,7 +153,7 @@ def recv_loop(radio, msgwin):
         elif cmd is Command.ERROR:
             pkt = 'ERR: ' + str(ord(pay[0]))
         elif cmd is Command.RXDATA:
-            pkt = 'RXDATA: ' + payload
+            pkt = 'RXDATA: ' + pay
         elif cmd is Command.RESET:
             pkt = 'RESET'
         elif cmd is Command.NOP:

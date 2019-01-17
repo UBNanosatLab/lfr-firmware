@@ -25,6 +25,7 @@
 #include "cmd_handler.h"
 #include "cmd_parser.h"
 #include "msp430_uart.h"
+#include "settings.h"
 
 void cmd_nop() {
     set_cmd_flag(FLAG_GOODCMD);
@@ -36,13 +37,13 @@ void cmd_reset() {
 }
 
 void cmd_set_txpwr(uint16_t pwr) {
-    tx_gate_bias = pwr;
+    settings.tx_gate_bias = pwr;
     set_cmd_flag(FLAG_GOODCMD);
     reply(sys_stat, CMD_SET_TXPWR, 0, NULL);
 }
 
 void cmd_get_txpwr() {
-    uint8_t resp[] = {(uint8_t)(tx_gate_bias >> 8), (uint8_t)(tx_gate_bias & 0xFF)};
+    uint8_t resp[] = {(uint8_t)(settings.tx_gate_bias >> 8), (uint8_t)(settings.tx_gate_bias & 0xFF)};
     set_cmd_flag(FLAG_GOODCMD);
     reply(sys_stat, CMD_READ_TXPWR, sizeof(resp), resp);
 }
@@ -65,6 +66,7 @@ void cmd_tx_data(int len, uint8_t *data) {
 }
 
 void cmd_set_freq(uint32_t freq) {
+    // TODO: Should this update settings?
     int err = si446x_set_frequency(&dev, freq);
 
     if (err) {
@@ -73,6 +75,36 @@ void cmd_set_freq(uint32_t freq) {
     } else {
         set_cmd_flag(FLAG_GOODCMD);
         reply(sys_stat, CMD_SET_FREQ, 0, NULL);
+    }
+}
+
+void cmd_abort_tx()
+{
+    int err;
+    err = si446x_recv_async(&dev, 255, buf, rx_cb);
+    if (err) {
+        reply_error(sys_stat, (uint8_t) -err);
+    } else {
+        set_cmd_flag(FLAG_GOODCMD);
+        reply(sys_stat, CMD_TX_PSR, 0, NULL);
+    }
+}
+
+void cmd_tx_psr()
+{
+    int err;
+    err = si446x_set_mod_type(&dev, MOD_SRC_RAND | MOD_TYPE_2GFSK);
+    if (err) {
+        reply_error(sys_stat, (uint8_t) -err);
+        return;
+    }
+
+    err = si446x_fire_tx(&dev);
+    if (err) {
+        reply_error(sys_stat, (uint8_t) -err);
+    } else {
+        set_cmd_flag(FLAG_GOODCMD);
+        reply(sys_stat, CMD_TX_PSR, 0, NULL);
     }
 }
 
