@@ -85,7 +85,11 @@ void parse_char(uint8_t c) {
         payload_len = c;
         payload_counter = 0;
         calc_checksum = fletcher(calc_checksum, c);
-        next_state = S_PAYLOAD;
+        if (payload_len) {
+            next_state = S_PAYLOAD;
+        } else {
+            next_state = S_CHECKSUM0;
+        }
       } else result = R_INVALID;
       break;
     case S_PAYLOAD:
