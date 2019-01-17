@@ -144,6 +144,7 @@ bool validate_cmd(uint8_t cmd) {
     case CMD_SET_TXPWR:
     case CMD_TXDATA:
     case CMD_SET_FREQ:
+    case CMD_GET_UID;
       return true;
     default:
       return false;
@@ -198,6 +199,8 @@ void command_handler(uint8_t cmd, uint8_t len, uint8_t* payload) {
         cmd_set_freq((uint32_t) payload[0] << 24 | (uint32_t) payload[1] << 16 | (uint32_t) payload[2] << 8 |
                      payload[3]);
         break;
+      case CMD_GET_UID:
+        cmd_get_uid();
     }
 }
 

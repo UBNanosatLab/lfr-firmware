@@ -90,4 +90,11 @@ void cmd_rx_data();
  */
 void cmd_err(int err);
 
+/**
+ * Get unique ID
+ * replies with the microcontroller's unique silicon id
+ */
+
+void cmd_get_uid();
+
 #endif

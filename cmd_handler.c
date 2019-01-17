@@ -76,6 +76,13 @@ void cmd_set_freq(uint32_t freq) {
     }
 }
 
+void cmd_get_uid(){
+    unsigned char buf[8]={0,0,0,0,0,0,0,0};
+    set_cmd_flag(FLAG_GOODCMD);
+    get_device_uid(buf);
+    reply(sys_stat, CMD_GET_UID, 8, buf);
+}
+
 void cmd_err(int err) {
     reply_error(sys_stat, (uint8_t) err);
 }
