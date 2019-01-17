@@ -108,6 +108,136 @@ void cmd_tx_psr()
     }
 }
 
+void cmd_set_cfg(int len, uint8_t *data)
+{
+    int i = 0;
+
+    // Right length?
+    if (len != 29) {
+        cmd_err(ECMDINVAL);
+        return;
+    }
+
+    // Check cfg struct version
+    if (data[i++] != SETTINGS_VER) {
+        cmd_err(EINVAL);
+        return;
+    }
+
+    // Okay, we've got the correct length and version!
+    // Set the settings!
+
+    settings.freq = ((uint32_t)data[i] << 24) | ((uint32_t)data[i+1] << 16) | ((uint32_t)data[i+2] << 8) | data[i+3];
+    i += 4;
+
+    settings.deviation = (data[i] << 8) | data[i+1];
+    i += 2;
+
+    settings.data_rate = (data[i] << 8) | data[i+1];
+    i += 2;
+
+    settings.tcxo_vpull = (data[i] << 8) | data[i+1];
+    i += 2;
+
+    settings.tx_gate_bias = (data[i] << 8) | data[i+1];
+    i += 2;
+
+    settings.tx_vdd = (data[i] << 8) | data[i+1];
+    i += 2;
+
+    settings.pa_ilimit = (data[i] << 8) | data[i+1];
+    i += 2;
+
+    settings.tx_vdd_delay = (data[i] << 8) | data[i+1];
+    i += 2;
+
+    settings.flags = (data[i] << 8) | data[i+1];
+    i += 2;
+
+    int j;
+    for (j = 0; j < 8; j++) {
+        settings.callsign[j] = data[i++];
+    }
+
+    reload_config();
+
+    set_cmd_flag(FLAG_GOODCMD);
+    reply(sys_stat, CMD_SET_CFG, 0, NULL);
+
+}
+
+void cmd_get_cfg()
+{
+    uint8_t data[] = {
+                    SETTINGS_VER,
+
+                    settings.freq >> 24,
+                    (settings.freq >> 16) & 0xFF,
+                    (settings.freq >> 8) & 0xFF,
+                    settings.freq & 0xFF,
+
+                    settings.deviation >> 8,
+                    settings.deviation & 0xFF,
+
+                    settings.data_rate >> 8,
+                    settings.data_rate & 0xFF,
+
+                    settings.tcxo_vpull >> 8,
+                    settings.tcxo_vpull & 0xFF,
+
+                    settings.tx_gate_bias >> 8,
+                    settings.tx_gate_bias & 0xFF,
+
+                    settings.tx_vdd >> 8,
+                    settings.tx_vdd & 0xFF,
+
+                    settings.pa_ilimit >> 8,
+                    settings.pa_ilimit & 0xFF,
+
+                    settings.tx_vdd_delay >> 8,
+                    settings.tx_vdd_delay & 0xFF,
+
+                    settings.flags >> 8,
+                    settings.flags & 0xFF,
+
+                    settings.callsign[0],
+                    settings.callsign[1],
+                    settings.callsign[2],
+                    settings.callsign[3],
+                    settings.callsign[4],
+                    settings.callsign[5],
+                    settings.callsign[6],
+                    settings.callsign[7]
+    };
+
+    set_cmd_flag(FLAG_GOODCMD);
+    reply(sys_stat, CMD_GET_CFG, sizeof(data), data);
+}
+
+void cmd_save_cfg()
+{
+    int err;
+    err = settings_save();
+    if (err) {
+        reply_error(sys_stat, (uint8_t) -err);
+    } else {
+        set_cmd_flag(FLAG_GOODCMD);
+        reply(sys_stat, CMD_SAVE_CFG, 0, NULL);
+    }
+}
+
+void cmd_cfg_default()
+{
+    int err;
+    err = settings_load_default();
+    if (err) {
+        reply_error(sys_stat, (uint8_t) -err);
+    } else {
+        set_cmd_flag(FLAG_GOODCMD);
+        reply(sys_stat, CMD_CFG_DEFAULT, 0, NULL);
+    }
+}
+
 void cmd_err(int err) {
     reply_error(sys_stat, (uint8_t) err);
 }

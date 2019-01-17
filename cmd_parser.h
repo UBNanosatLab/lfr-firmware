@@ -43,6 +43,11 @@
 #define CMD_SET_FREQ 5
 #define CMD_TX_PSR 6
 #define CMD_TX_ABORT 7
+#define CMD_GET_CFG 8
+#define CMD_SET_CFG 9
+#define CMD_SAVE_CFG 10
+#define CMD_CFG_DEFAULT 11
+
 /* not really a command, only used in spontaneous reports */
 #define CMD_RXDATA 16
 

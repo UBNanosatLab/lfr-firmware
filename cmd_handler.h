@@ -73,6 +73,19 @@ void cmd_set_cfg(int len, uint8_t *data);
 void cmd_get_cfg();
 
 /**
+ * Save configuration
+ * Writes the current configuration data to non-volatile storage
+ */
+void cmd_save_cfg();
+
+/**
+ * Load default configuration
+ * Loads the default (factory) configuration into the volatile settings
+ */
+void cmd_cfg_default();
+
+
+/**
  * Set frequency
  * Changes the frequency
  * @param freq desired frequency in Hz

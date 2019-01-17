@@ -6,6 +6,7 @@ from time import sleep
 import threading
 
 import serial
+import struct
 
 from enum import Enum, auto
 
@@ -28,6 +29,11 @@ class Command(Enum):
     TXDATA = 0x02
     GET_TXPWR = 0x03
     SET_TXPWR = 0x04
+
+    GET_CFG = 0x08
+    SET_CFG = 0x09
+    SAVE_CFG = 0x0A
+    CFG_DEFAULT = 0x0B
 
     RXDATA = 0x10
 
@@ -100,6 +106,7 @@ class RadioException(Exception):
         return 'RadioException(' + self.error + '): ' + self.msg
 
     pass
+
 
 class Radio:
 
@@ -200,6 +207,35 @@ class Radio:
 
         return (flags, cmd, payload)
 
+    def get_cfg(self):
+        pkt = chr(Command.GET_CFG.value)
+        pkt += chr(0)
+        chksum = compute_chksum(pkt)
+        pkt += chr(chksum >> 8)
+        pkt += chr(chksum & 0xFF)
+        pkt = '\xBE\xEF' + pkt
+
+        self.ser.write(bytes([ord(x) for x in pkt]))
+
+        (flags, cmd, pay) = self.recv()
+
+        if cmd  == Command.ERROR.value | Command.REPLY.value:
+            err = RadioException(pay[0])
+            raise err
+
+        elif Command.GET_CFG.value | Command.REPLY.value:
+
+            cfg = {}
+
+            cfg['cfg_ver'], cfg['freq'], cfg['deviation'], cfg['data_rate'], \
+            cfg['txco_vpull'], cfg['tx_gate_bias'], cfg['tx_vdd'], \
+            cfg['pa_ilimit'], cfg['tx_vdd_delay'], cfg['flags'],\
+            cfg['callsign'] = struct.unpack("!BIHHHHHHHH8s", bytes([ord(x) for x in pay]))
+
+            return cfg
+        else:
+            raise Exception('Unexpected response: ' + str((flags, cmd, pay)))
+
 
 def main():
 
@@ -221,6 +257,11 @@ def main():
             radio.tx(data)
             print('Sent ' + str(len(data)) + ' byte(s)')
             # Look ma, no sleep!
+    
+    elif (sys.argv[2] == 'get-cfg' and len(sys.argv) == 3):
+        
+        print(radio.get_cfg())
+     
 
     else:
         print('Usage: python3', sys.argv[0], '/dev/<RADIO_UART> [rx | tx n]')

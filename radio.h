@@ -28,6 +28,7 @@ extern uint8_t buf[255];
 extern volatile bool do_pong;
 extern uint8_t sys_stat;
 
+int reload_config();
 void set_cmd_flag(uint8_t flag);
 int pre_transmit();
 void rx_cb(struct si446x_device *dev, int err, int len, uint8_t *data);

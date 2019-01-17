@@ -22,6 +22,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#define SETTINGS_VER 0x02
+
+#define FLAG_CRC_CHECK 0x0001
+
 struct lfr_settings {
     uint32_t freq;
     uint16_t deviation;

@@ -206,6 +206,28 @@ void error(int err, char *file, int line) {
     while (1) LPM0;
 }
 
+int reload_config()
+{
+    int err;
+
+    err = si446x_set_frequency(&dev, settings.freq);
+    if (err) {
+        return err;
+    }
+
+    err = set_dac_output(TCXO_CHAN, settings.tcxo_vpull);
+    if (err) {
+        return err;
+    }
+
+    err = si446x_check_crc(&dev, settings.flags & FLAG_CRC_CHECK);
+    if (err) {
+        return err;
+    }
+
+    return 0;
+}
+
 int main(void)
 {
     int err;
@@ -241,11 +263,7 @@ int main(void)
         return err;
     }
 
-    err = si446x_set_frequency(&dev, settings.freq);
-    if (err) {
-        error(-err, __FILE__, __LINE__);
-        return err;
-    }
+    reload_config();
 
     err = si446x_config_crc(&dev, CRC_SEED_1 | CRC_CCIT_16);
     if (err) {
@@ -260,12 +278,6 @@ int main(void)
     }
 
     err = si446x_cfg_gpio(&dev, GPIO_SYNC_WORD_DETECT, GPIO_TX_DATA, GPIO_TX_DATA_CLK, GPIO_RX_STATE);
-    if (err) {
-        error(-err, __FILE__, __LINE__);
-        return err;
-    }
-
-    err = set_dac_output(TCXO_CHAN, settings.tcxo_vpull);
     if (err) {
         error(-err, __FILE__, __LINE__);
         return err;
