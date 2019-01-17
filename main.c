@@ -74,6 +74,13 @@ int set_gate_bias(uint16_t bias); // 1mV/LSB, up to VDD (~3300)
 int set_drain_voltage(uint16_t vdd); // Approximately 10mV/LSB (97 = 1V)
 int set_current_limit(uint16_t ilim); // 2mA/LSB, up to 1000 (2A)
 
+#define BER_SYNCWORD (0xdeadbeefdeadbeef)
+volatile uint64_t ber_data[2] = {0,0};
+volatile uint8_t ber_i=0;
+volatile uint8_t ber_send=0;
+volatile uint8_t ber_bitcount=0;
+volatile uint8_t synced=0;
+
 int pre_transmit();
 int post_transmit();
 
@@ -209,6 +216,9 @@ void error(int err, char *file, int line) {
 int main(void)
 {
     int err;
+
+
+
     WDTCTL = WDTPW | WDTHOLD;   // stop watchdog timer
 
 
@@ -258,7 +268,9 @@ int main(void)
         return err;
     }
 
-    err = si446x_cfg_gpio(&dev, GPIO_SYNC_WORD_DETECT, GPIO_TX_DATA, GPIO_TX_DATA_CLK, GPIO_RX_STATE);
+    //err = si446x_cfg_gpio(&dev, GPIO_SYNC_WORD_DETECT, GPIO_TX_DATA, GPIO_TX_DATA_CLK, GPIO_RX_STATE);
+    //Set up for direct receiving on GPIO1/GPIO2 for BER test
+    err = si446x_cfg_gpio(&dev, GPIO_SYNC_WORD_DETECT, GPIO_RX_DATA, GPIO_RX_DATA_CLK, GPIO_RX_STATE);
     if (err) {
         error(-err, __FILE__, __LINE__);
         return err;
@@ -274,7 +286,10 @@ int main(void)
 
     enable_pin_interrupt(GPIO0, RISING);
     enable_pin_interrupt(INT_PIN, FALLING);
+    //RX_DATA_CLOCK pin
+    enable_pin_interrupt(GPIO2, RISING);
 
+/*
     uint8_t rst[] = {'R', 'E', 'S', 'E', 'T'};
 
     gpio_write(TX_ACT_PIN, HIGH);
@@ -282,7 +297,7 @@ int main(void)
     err = si446x_send(&dev, sizeof(rst), rst);
     set_gate_bias(0x000);
     gpio_write(TX_ACT_PIN, LOW);
-
+*/
     if (err) {
         error(-err, __FILE__, __LINE__);
         return err;
@@ -320,8 +335,40 @@ int main(void)
                 char c = uart_getc();
                 parse_char(c);
         } else {
+            if(ber_send){
+                ber_send=0;
+                int i=0;
+                //because, of course, I can't just point reply at a &uint64_t and expect the right byte order
+                uint8_t ilttelneidna[8];
+                for(; i<7; i++){
+                    ilttelneidna[i] = ber_data[ber_i^1] & 0xff;
+                    ber_data[ber_i^1] >>= 8;
+                }
+                reply(sys_stat, CMD_RXDATA, 8, ilttelneidna);
+            }
 //                LPM0; //enter LPM0 until an interrupt happens on the uart
         }
+    }
+}
+
+#pragma vector=PORT3_VECTOR
+__interrupt void raw_bit_isr()
+{
+    P3IFG = 0;
+    //shift P4.4 (GPIO1) in
+    ber_data[ber_i] = ber_data[ber_i]<<1 | (P4IN & BIT4);
+    //if the sync word already came, throw 64-bit chunks at the host
+    if(synced){
+        ber_bitcount++;
+        if(ber_bitcount == 63){
+            ber_i ^= 1;
+            ber_send=1;
+            ber_bitcount=0;
+        }
+    //otherwise wait for the last 64 bits to be the special BER test sync word
+    } else if(ber_data[ber_i] == BER_SYNCWORD){
+        synced=1;
+        ber_data[ber_i] = 0;
     }
 }
 
