@@ -337,7 +337,7 @@ __interrupt void raw_bit_isr()
     P3IFG = 0;
     if(ber_test){
         //shift P4.4 (GPIO1) in
-        ber_data[ber_i] = ber_data[ber_i]<<1 | (P4IN & BIT4);
+        ber_data[ber_i] = ber_data[ber_i]<<1 | ((P4IN >> 4) & 1);
         //if the sync word already came, throw 64-bit chunks at the host
         if(ber_synced){
             ber_bitcount++;
