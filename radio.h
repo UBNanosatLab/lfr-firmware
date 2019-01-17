@@ -28,6 +28,13 @@ extern uint8_t buf[255];
 extern volatile bool do_pong;
 extern uint16_t tx_gate_bias;
 extern uint8_t sys_stat;
+// Bit error rate test control variables
+extern bool ber_test;
+extern volatile uint64_t ber_data[2];
+extern volatile uint8_t ber_i;
+extern volatile bool ber_send;
+extern volatile uint8_t ber_bitcount;
+extern volatile bool ber_synced;
 
 void set_cmd_flag(uint8_t flag);
 int pre_transmit();

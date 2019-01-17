@@ -23,28 +23,12 @@
 #include "mcu.h"
 #include "msp430_uart.h"
 #include "cmd_parser.h"
+#include "board.h"
 
 #define XTAL_FREQ   26000000L
 #define OSC_TYPE    OPT_TCXO
 #define FREQ_OFFSET 0
 
-// Pin definitions for Rev. 1A
-#define NSEL_PIN        0x37
-#define SDN_PIN         0x24
-#define INT_PIN         0x53
-#define GPIO0           0x20
-#define GPIO1           0x44
-#define GPIO2           0x36
-#define GPIO3           0x35
-#define TX_ACT_PIN      0x15
-#define PA_IMON_PIN     0x42
-#define PA_PWR_EN_PIN   0x43
-#define PA_PGOOD_PIN    0x74
-
-#define GATE_CHAN   0
-#define TCXO_CHAN   1
-#define VSET_CHAN   2
-#define ISET_CHAN   3
 
 struct si446x_device dev;
 uint8_t buf[255];
@@ -52,8 +36,17 @@ uint8_t buf[255];
 //status byte for command replies. Bits are [TXBUSY]:[BADCMD]:[BADCKSUM]:[GOODCMD]:[reserved for tx buffer depth 3:0]
 uint8_t sys_stat = 0;
 
+
 volatile bool do_pong = false;
 volatile bool radio_irq = true;
+
+#define BER_SYNCWORD (0xdeadbeefdeadbeef)
+bool ber_test = false;
+volatile uint64_t ber_data[2] = {0,0};
+volatile uint8_t ber_i=0;
+volatile bool ber_send=false;
+volatile uint8_t ber_bitcount=0;
+volatile bool ber_synced=false;
 
 //uint16_t tx_gate_bias = 0xDF0; // ~29 dBm
 //uint16_t tx_gate_bias = 0xA80; // ~0 dBm
@@ -73,13 +66,6 @@ void tx_cb(struct si446x_device *dev, int err);
 int set_gate_bias(uint16_t bias); // 1mV/LSB, up to VDD (~3300)
 int set_drain_voltage(uint16_t vdd); // Approximately 10mV/LSB (97 = 1V)
 int set_current_limit(uint16_t ilim); // 2mA/LSB, up to 1000 (2A)
-
-#define BER_SYNCWORD (0xdeadbeefdeadbeef)
-volatile uint64_t ber_data[2] = {0,0};
-volatile uint8_t ber_i=0;
-volatile uint8_t ber_send=0;
-volatile uint8_t ber_bitcount=0;
-volatile uint8_t synced=0;
 
 int pre_transmit();
 int post_transmit();
@@ -217,10 +203,7 @@ int main(void)
 {
     int err;
 
-
-
     WDTCTL = WDTPW | WDTHOLD;   // stop watchdog timer
-
 
     mcu_init();
     uart_init();
@@ -268,9 +251,8 @@ int main(void)
         return err;
     }
 
-    //err = si446x_cfg_gpio(&dev, GPIO_SYNC_WORD_DETECT, GPIO_TX_DATA, GPIO_TX_DATA_CLK, GPIO_RX_STATE);
-    //Set up for direct receiving on GPIO1/GPIO2 for BER test
-    err = si446x_cfg_gpio(&dev, GPIO_SYNC_WORD_DETECT, GPIO_RX_DATA, GPIO_RX_DATA_CLK, GPIO_RX_STATE);
+    err = si446x_cfg_gpio(&dev, GPIO_SYNC_WORD_DETECT, GPIO_TX_DATA, GPIO_TX_DATA_CLK, GPIO_RX_STATE);
+
     if (err) {
         error(-err, __FILE__, __LINE__);
         return err;
@@ -286,11 +268,6 @@ int main(void)
 
     enable_pin_interrupt(GPIO0, RISING);
     enable_pin_interrupt(INT_PIN, FALLING);
-
-    gpio_config(GPIO1, INPUT_PULLDOWN);
-    gpio_config(GPIO2, INPUT_PULLDOWN);
-    //RX_DATA_CLOCK pin
-    enable_pin_interrupt(GPIO2, RISING);
 
 /*
     uint8_t rst[] = {'R', 'E', 'S', 'E', 'T'};
@@ -358,20 +335,22 @@ int main(void)
 __interrupt void raw_bit_isr()
 {
     P3IFG = 0;
-    //shift P4.4 (GPIO1) in
-    ber_data[ber_i] = ber_data[ber_i]<<1 | (P4IN & BIT4);
-    //if the sync word already came, throw 64-bit chunks at the host
-    if(synced){
-        ber_bitcount++;
-        if(ber_bitcount == 63){
-            ber_i ^= 1;
-            ber_send=1;
-            ber_bitcount=0;
+    if(ber_test){
+        //shift P4.4 (GPIO1) in
+        ber_data[ber_i] = ber_data[ber_i]<<1 | (P4IN & BIT4);
+        //if the sync word already came, throw 64-bit chunks at the host
+        if(ber_synced){
+            ber_bitcount++;
+            if(ber_bitcount == 63){
+                ber_i ^= 1;
+                ber_send=1;
+                ber_bitcount=0;
+            }
+        //otherwise wait for the last 64 bits to be the special BER test sync word
+        } else if(ber_data[ber_i] == BER_SYNCWORD){
+            ber_synced=1;
+            ber_data[ber_i] = 0;
         }
-    //otherwise wait for the last 64 bits to be the special BER test sync word
-    } else if(ber_data[ber_i] == BER_SYNCWORD){
-        synced=1;
-        ber_data[ber_i] = 0;
     }
 }
 

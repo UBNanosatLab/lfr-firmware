@@ -85,6 +85,16 @@ void cmd_tx_psr();
 void cmd_rx_data();
 
 /**
+ * Set up to begin receiving bit error rate test data
+ */
+void start_ber_test();
+
+/**
+ * Stop bit error rate test and return to normal operation
+ */
+void stop_ber_test();
+
+/**
  * Send an error back
  * @param err the (positive) error code
  */

@@ -16,43 +16,30 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MCU_H
-#define MCU_H
+/*
+ * Board-specific header.  Pin assignments and such go here.
+ */
 
-#include <stdint.h>
-#include <stdbool.h>
+#ifndef BOARD_H_
+#define BOARD_H_
 
-#define HIGH 0x1
-#define LOW  0x0
 
-#define INPUT 0x0
-#define OUTPUT 0x1
-#define INPUT_PULLUP 0x30
-#define INPUT_PULLDOWN 0x20
+// Pin definitions for Rev. 1A
+#define NSEL_PIN        0x37
+#define SDN_PIN         0x24
+#define INT_PIN         0x53
+#define GPIO0           0x20
+#define GPIO1           0x44
+#define GPIO2           0x36
+#define GPIO3           0x35
+#define TX_ACT_PIN      0x15
+#define PA_IMON_PIN     0x42
+#define PA_PWR_EN_PIN   0x43
+#define PA_PGOOD_PIN    0x74
 
-#define RISING 0x00
-#define FALLING 0x01
+#define GATE_CHAN   0
+#define TCXO_CHAN   1
+#define VSET_CHAN   2
+#define ISET_CHAN   3
 
-#define USE_HFXT
-
-void mcu_init();
-void mcu_reset();
-void wdt_feed();
-
-void i2c_init();
-int i2c_write(unsigned char slave_addr, unsigned char *buf, unsigned char len);
-
-void spi_init();
-void spi_write_byte(unsigned char b);
-void spi_write_data(int len, const unsigned char *data);
-void spi_read_data(int len, unsigned char *data);
-
-void gpio_config(int pin, int mode);
-void gpio_write(int pin, int value);
-unsigned char gpio_read(int pin);
-int enable_pin_interrupt(int pin, int edge);
-int disable_pin_interrupt(int pin);
-
-void delay_micros(unsigned long micros);
-
-#endif
+#endif /* BOARD_H_ */

@@ -25,6 +25,7 @@
 #include "cmd_handler.h"
 #include "cmd_parser.h"
 #include "msp430_uart.h"
+#include "board.h"
 
 void cmd_nop() {
     set_cmd_flag(FLAG_GOODCMD);
@@ -73,6 +74,39 @@ void cmd_set_freq(uint32_t freq) {
     } else {
         set_cmd_flag(FLAG_GOODCMD);
         reply(sys_stat, CMD_SET_FREQ, 0, NULL);
+    }
+}
+
+void start_ber_test(){
+    int err;
+    //Set up for direct receiving on GPIO1/GPIO2 for BER test
+    ber_data[0] = ber_data[1] = 0;
+    ber_i = ber_bitcount = 0;
+    ber_synced = ber_send = false;
+    ber_test = true;
+    gpio_config(GPIO1, INPUT_PULLDOWN);
+    gpio_config(GPIO2, INPUT_PULLDOWN);
+    //RX_DATA_CLOCK pin
+    enable_pin_interrupt(GPIO2, RISING);
+    err = si446x_cfg_gpio(&dev, GPIO_SYNC_WORD_DETECT, GPIO_RX_DATA, GPIO_RX_DATA_CLK, GPIO_RX_STATE);
+    if (err) {
+        reply_error(sys_stat, (uint8_t) -err);
+    }else {
+        set_cmd_flag(FLAG_GOODCMD);
+        reply(sys_stat, CMD_START_BER_TEST, 0, NULL);
+    }
+}
+
+void stop_ber_test(){
+    ber_test = ber_send = false;
+    int err;
+    //return RFIC GPIOs to normal state
+    err = si446x_cfg_gpio(&dev, GPIO_SYNC_WORD_DETECT, GPIO_TX_DATA, GPIO_TX_DATA_CLK, GPIO_RX_STATE);
+    if (err) {
+        reply_error(sys_stat, (uint8_t) -err);
+    }else {
+        set_cmd_flag(FLAG_GOODCMD);
+        reply(sys_stat, CMD_STOP_BER_TEST, 0, NULL);
     }
 }
 

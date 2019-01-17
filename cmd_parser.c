@@ -140,6 +140,8 @@ bool validate_cmd(uint8_t cmd) {
     case CMD_SET_TXPWR:
     case CMD_TXDATA:
     case CMD_SET_FREQ:
+    case CMD_START_BER_TEST:
+    case CMD_STOP_BER_TEST:
       return true;
     default:
       return false;
@@ -193,6 +195,12 @@ void command_handler(uint8_t cmd, uint8_t len, uint8_t* payload) {
       case CMD_SET_FREQ:
         cmd_set_freq((uint32_t) payload[0] << 24 | (uint32_t) payload[1] << 16 | (uint32_t) payload[2] << 8 |
                      payload[3]);
+        break;
+      case CMD_START_BER_TEST:
+        start_ber_test();
+        break;
+      case CMD_STOP_BER_TEST:
+        stop_ber_test();
         break;
     }
 }
