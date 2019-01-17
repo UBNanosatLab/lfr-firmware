@@ -99,6 +99,7 @@ void start_ber_test(){
 
 void stop_ber_test(){
     ber_test = ber_send = false;
+    disable_pin_interrupt(GPIO2);
     int err;
     //return RFIC GPIOs to normal state
     err = si446x_cfg_gpio(&dev, GPIO_SYNC_WORD_DETECT, GPIO_TX_DATA, GPIO_TX_DATA_CLK, GPIO_RX_STATE);
