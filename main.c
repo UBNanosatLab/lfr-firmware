@@ -286,6 +286,9 @@ int main(void)
 
     enable_pin_interrupt(GPIO0, RISING);
     enable_pin_interrupt(INT_PIN, FALLING);
+
+    gpio_config(GPIO1, INPUT_PULLDOWN);
+    gpio_config(GPIO2, INPUT_PULLDOWN);
     //RX_DATA_CLOCK pin
     enable_pin_interrupt(GPIO2, RISING);
 
