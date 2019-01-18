@@ -3,3 +3,5 @@ Debug/*
 *.gch
 /Debug/
 .vscode/
+
+*.json

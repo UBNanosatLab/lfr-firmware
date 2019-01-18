@@ -7,6 +7,7 @@ import threading
 
 import serial
 import struct
+import json
 
 from enum import Enum, auto
 
@@ -100,7 +101,7 @@ class RadioException(Exception):
             self.msg = 'Si446x RX timed out (zero len bug?)'
         else:
             self.error = 'UNKNOWN'
-            self.msg = 'An unknown error occurred'
+            self.msg = 'An unknown error occurred (' + str(code) + ')'
 
     def __str__(self):
         return 'RadioException(' + self.error + '): ' + self.msg
@@ -144,7 +145,7 @@ class Radio:
         (flags, cmd, pay) = self.recv()
 
         if cmd  == Command.ERROR.value | Command.REPLY.value:
-            raise RadioException(pay[0])
+            raise RadioException(ord(pay[0]))
         elif Command.RXDATA.value | Command.REPLY.value:
             return pay
         else:
@@ -232,10 +233,87 @@ class Radio:
             cfg['pa_ilimit'], cfg['tx_vdd_delay'], cfg['flags'],\
             cfg['callsign'] = struct.unpack("!BIHHHHHHHH8s", bytes([ord(x) for x in pay]))
 
+            cfg['callsign'] = cfg['callsign'].decode("utf-8")
+
             return cfg
         else:
             raise Exception('Unexpected response: ' + str((flags, cmd, pay)))
 
+    def set_cfg(self, cfg_in):
+
+        cfg = dict(cfg_in)
+
+        cfg['callsign'] = cfg['callsign'].encode("utf-8")
+
+        data = struct.pack("!BIHHHHHHHH8s", \
+            cfg['cfg_ver'], cfg['freq'], cfg['deviation'], cfg['data_rate'], \
+            cfg['txco_vpull'], cfg['tx_gate_bias'], cfg['tx_vdd'], \
+            cfg['pa_ilimit'], cfg['tx_vdd_delay'], cfg['flags'], \
+            cfg['callsign'])
+
+        pkt = chr(Command.SET_CFG.value)
+        pkt += chr(len(data))
+        pkt += ''.join([chr(x) for x in data])
+        chksum = compute_chksum(pkt)
+        pkt += chr(chksum >> 8)
+        pkt += chr(chksum & 0xFF)
+        pkt = '\xBE\xEF' + pkt
+
+        self.ser.write(bytes([ord(x) for x in pkt]))
+
+        (flags, cmd, pay) = self.recv()
+
+        if cmd  == Command.ERROR.value | Command.REPLY.value:
+            err = RadioException(ord(pay[0]))
+            raise err
+
+        elif Command.SET_CFG.value | Command.REPLY.value:
+            return
+        else:
+            raise Exception('Unexpected response: ' + str((flags, cmd, pay)))
+
+
+    def save_cfg(self):
+        pkt = chr(Command.SAVE_CFG.value)
+        pkt += chr(0)
+        chksum = compute_chksum(pkt)
+        pkt += chr(chksum >> 8)
+        pkt += chr(chksum & 0xFF)
+        pkt = '\xBE\xEF' + pkt
+
+        self.ser.write(bytes([ord(x) for x in pkt]))
+
+        (flags, cmd, pay) = self.recv()
+
+        if cmd  == Command.ERROR.value | Command.REPLY.value:
+            err = RadioException(ord(pay[0]))
+            raise err
+
+        elif Command.GET_CFG.value | Command.REPLY.value:
+            return
+        else:
+            raise Exception('Unexpected response: ' + str((flags, cmd, pay)))
+
+    def cfg_default(self):
+        pkt = chr(Command.CFG_DEFAULT.value)
+        pkt += chr(0)
+        chksum = compute_chksum(pkt)
+        pkt += chr(chksum >> 8)
+        pkt += chr(chksum & 0xFF)
+        pkt = '\xBE\xEF' + pkt
+
+        self.ser.write(bytes([ord(x) for x in pkt]))
+
+        (flags, cmd, pay) = self.recv()
+
+        if cmd  == Command.ERROR.value | Command.REPLY.value:
+            err = RadioException(ord(pay[0]))
+            raise err
+
+        elif Command.GET_CFG.value | Command.REPLY.value:
+            return
+        else:
+            raise Exception('Unexpected response: ' + str((flags, cmd, pay)))
 
 def main():
 
@@ -252,16 +330,29 @@ def main():
     elif (sys.argv[2] == 'tx' and len(sys.argv) == 4):
         sleep(1)
         for i in range(int(sys.argv[3])):
-            data = ('KC2QOL ' + str(i + 1) + ' ').ljust(104, 'x')
+            data = ('KC2QOL ' + str(i + 1) + ' ').ljust(255, 'x')
             print('TX>', data)
             radio.tx(data)
             print('Sent ' + str(len(data)) + ' byte(s)')
             # Look ma, no sleep!
     
     elif (sys.argv[2] == 'get-cfg' and len(sys.argv) == 3):
+        print(json.dumps(radio.get_cfg(), indent=4))
+
+    elif (sys.argv[2] == 'load-cfg' and len(sys.argv) == 4): 
+        with open(sys.argv[3], 'r') as f:
+            cfg = json.load(f)
         
-        print(radio.get_cfg())
+        radio.set_cfg(cfg)
+        new_cfg = json.dumps(radio.get_cfg(), indent=4)
+        print("Successfully loaded config:", sys.argv[3])
+        print(new_cfg)
      
+    elif (sys.argv[2] == 'save-cfg' and len(sys.argv) == 3):
+        radio.save_cfg()
+
+    elif (sys.argv[2] == 'default-cfg' and len(sys.argv) == 3):
+        radio.cfg_default()
 
     else:
         print('Usage: python3', sys.argv[0], '/dev/<RADIO_UART> [rx | tx n]')

@@ -147,6 +147,7 @@ bool validate_cmd(uint8_t cmd) {
     case CMD_GET_CFG:
     case CMD_SET_CFG:
     case CMD_SAVE_CFG:
+    case CMD_CFG_DEFAULT:
       return true;
     default:
       return false;

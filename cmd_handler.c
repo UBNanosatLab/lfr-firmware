@@ -110,7 +110,7 @@ void cmd_tx_psr()
 
 void cmd_set_cfg(int len, uint8_t *data)
 {
-    int i = 0;
+    unsigned int i = 0;
 
     // Right length?
     if (len != 29) {
@@ -154,7 +154,7 @@ void cmd_set_cfg(int len, uint8_t *data)
     settings.flags = (data[i] << 8) | data[i+1];
     i += 2;
 
-    int j;
+    unsigned int j;
     for (j = 0; j < 8; j++) {
         settings.callsign[j] = data[i++];
     }
@@ -233,6 +233,7 @@ void cmd_cfg_default()
     if (err) {
         reply_error(sys_stat, (uint8_t) -err);
     } else {
+        reload_config();
         set_cmd_flag(FLAG_GOODCMD);
         reply(sys_stat, CMD_CFG_DEFAULT, 0, NULL);
     }
