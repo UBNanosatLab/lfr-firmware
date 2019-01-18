@@ -315,8 +315,7 @@ class Radio:
         else:
             raise Exception('Unexpected response: ' + str((flags, cmd, pay)))
 
-def main():
-
+if __name__ == '__main__':
     radio = Radio(sys.argv[1])
 
     if (len(sys.argv) == 2 or sys.argv[2] == 'rx'):
@@ -356,7 +355,3 @@ def main():
 
     else:
         print('Usage: python3', sys.argv[0], '/dev/<RADIO_UART> [rx | tx n]')
-
-
-if __name__ == '__main__':
-    main()
