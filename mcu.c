@@ -595,9 +595,5 @@ int enable_pin_interrupt(int pin, int edge)
  */
 void get_device_uid(unsigned char* buf){
     uint8_t *tlv = (uint8_t*)TLV_SILICON_UID_BASE;
-    int i=0;
-    for(;i<8; i++){
-        buf[i] = *tlv;
-        tlv++;
-    }
+    memcpy(buf, tlv, 8);
 }

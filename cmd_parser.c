@@ -144,7 +144,7 @@ bool validate_cmd(uint8_t cmd) {
     case CMD_SET_TXPWR:
     case CMD_TXDATA:
     case CMD_SET_FREQ:
-    case CMD_GET_UID;
+    case CMD_GET_UID:
       return true;
     default:
       return false;

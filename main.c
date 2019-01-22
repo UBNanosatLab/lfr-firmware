@@ -223,7 +223,15 @@ int main(void)
     //Power-on tests
     printf("LFR Starting up...\n");
     reply(sys_stat, CMD_RESET, 0, NULL);
-
+/* testing silicon unique ID */
+    uint8_t id_buf[8] = {'d','o','n','t','w','o','r','k'};
+    get_device_uid(id_buf);
+    printf("Device ID:\n");
+    int i;
+    for(i=0; i<8; i++){
+        printf(" 0x%d \n", id_buf[i]);
+    }
+/* end test */
     i2c_init();
     err = set_gate_bias(0x000);
 
