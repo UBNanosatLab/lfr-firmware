@@ -20,10 +20,11 @@
 #include <stdint.h>
 
 #include "settings.h"
+#include "radio.h"
 
 #define DEFAULT_SETTINGS {\
     .freq = 434000000L,   \
-    .modem_config = 1,    \
+    .modem_config = DATA_10K_DEV_5K,    \
     .tcxo_vpull = 1256,   \
     .tx_gate_bias = 500,  /* 0.5V bias is enough to see in testing, but very very low output power */ \
     .tx_vdd = 5000,       /* 5V will wake the PA up, but dissipate little heat even with a lot of gate bias */ \
