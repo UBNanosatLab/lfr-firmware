@@ -19,6 +19,8 @@
 #include <msp430.h>
 #include <stdlib.h>
 
+#include "error.h"
+#include "lfr.h"
 #include "radio.h"
 #include "mcu.h"
 #include "lib446x/si446x.h"
@@ -66,8 +68,8 @@ void cmd_tx_data(int len, uint8_t *data) {
 }
 
 void cmd_set_freq(uint32_t freq) {
-    // TODO: Should this update settings?
-    int err = si446x_set_frequency(&dev, freq);
+    settings.freq = freq;
+    int err = set_frequency(freq);
 
     if (err) {
         // Halt and catch fire
@@ -113,7 +115,7 @@ void cmd_set_cfg(int len, uint8_t *data)
     unsigned int i = 0;
 
     // Right length?
-    if (len != 29) {
+    if (len != 26) {
         cmd_err(ECMDINVAL);
         return;
     }
@@ -130,11 +132,8 @@ void cmd_set_cfg(int len, uint8_t *data)
     settings.freq = ((uint32_t)data[i] << 24) | ((uint32_t)data[i+1] << 16) | ((uint32_t)data[i+2] << 8) | data[i+3];
     i += 4;
 
-    settings.deviation = (data[i] << 8) | data[i+1];
-    i += 2;
-
-    settings.data_rate = (data[i] << 8) | data[i+1];
-    i += 2;
+    settings.modem_config = data[i];
+    i += 1;
 
     settings.tcxo_vpull = (data[i] << 8) | data[i+1];
     i += 2;
@@ -176,11 +175,7 @@ void cmd_get_cfg()
                     (settings.freq >> 8) & 0xFF,
                     settings.freq & 0xFF,
 
-                    settings.deviation >> 8,
-                    settings.deviation & 0xFF,
-
-                    settings.data_rate >> 8,
-                    settings.data_rate & 0xFF,
+                    settings.modem_config,
 
                     settings.tcxo_vpull >> 8,
                     settings.tcxo_vpull & 0xFF,

@@ -16,30 +16,11 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef RADIO_H
-#define RADIO_H
+#ifndef AMP_H_
+#define AMP_H_
 
-#include <stdbool.h>
-#include <stdint.h>
+int set_gate_bias(uint16_t bias_mv);
+int set_drain_voltage(uint16_t vdd_mv);
+int set_current_limit(uint16_t ilim_ma);
 
-#define DATA_1K_DEV_0K25        0x00
-#define DATA_1K_DEV_0K5         0x01
-#define DATA_2K5_DEV_0K625      0x02
-#define DATA_2K5_DEV_1K25       0x03
-#define DATA_5K_DEV_1K25        0x04
-#define DATA_5K_DEV_2K5         0x05
-#define DATA_10K_DEV_2K5        0x06
-#define DATA_10K_DEV_5K         0x07
-#define DATA_25K_DEV_6K25       0x08
-#define DATA_25K_DEV_12K5       0x09
-#define DATA_50K_DEV_12K5       0x0A
-#define DATA_50K_DEV_25K        0x0B
-#define DATA_100K_DEV_25K       0x0C
-#define DATA_100K_DEV_50K       0x0D
-#define DATA_250K_DEV_62K5      0x0E
-#define DATA_250K_DEV_125K      0x0F
-
-int set_frequency(uint32_t freq);
-int set_modem_config(uint8_t cfg);
-
-#endif
+#endif /* AMP_H_ */

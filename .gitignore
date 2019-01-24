@@ -3,5 +3,6 @@ Debug/*
 *.gch
 /Debug/
 .vscode/
-
+*/__pycache__/
 *.json
+*.csv

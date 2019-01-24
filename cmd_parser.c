@@ -23,6 +23,8 @@
 #include <stdio.h>
 #endif
 
+#include "error.h"
+
 void command_handler(uint8_t cmd, uint8_t len, uint8_t* payload);
 
  bool validate_cmd(uint8_t cmd);
@@ -197,6 +199,7 @@ void command_handler(uint8_t cmd, uint8_t len, uint8_t* payload) {
         break;
       case CMD_SET_TXPWR:
         cmd_set_txpwr((uint16_t) payload[0] << 8 | payload[1]);
+        break;
       case CMD_TXDATA:
         cmd_tx_data(len, payload);
         break;

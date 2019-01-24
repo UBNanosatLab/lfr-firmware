@@ -21,6 +21,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include "mcu.h"
+#include "error.h"
 
 
 #define CYC_PER_US      8
@@ -362,6 +363,31 @@ void __attribute__ ((interrupt(EUSCI_B2_VECTOR))) USCI_B2_ISR (void)
         case USCI_I2C_UCBIT9IFG: break;     // Vector 30: 9th bit
         default: break;
     }
+}
+
+/**
+ * @brief Set the output voltage of a DAC channel, in mV
+ */
+int set_dac_output(uint8_t chan, uint16_t mv) {
+    if (chan > 3 || mv > 0xFFF) {
+        return -EINVAL;
+    }
+
+
+    // Multi-write (doesn't update EEPROM)
+    // -----------------------------------------------
+    // Byte 1: 0    1    0    0    0    DAC1 DAC0 UDAC
+    // Byte 2: VREF PD1  PD0  Gx   D11  D10  D9   D8
+    // Byte 3: D7   D6   D5   D4   D3   D2   D1   D0
+
+    uint8_t cmd[] = {
+        0x40 | (chan << 1) | 0x00,      // Multiwrite | channel | ~UDAC (update immediately)
+        0x80 | 0x00 | 0x10 | mv >> 8,  // VREF = 2.048V internal | PD = Normal operation | Gain = x2 | val[11:8]
+        mv & 0xFF                      // val[7:0]
+    };
+
+    int len = i2c_write(0x60, cmd, sizeof(cmd));
+    return len == sizeof(cmd) ? ESUCCESS : -EINVALSTATE;
 }
 
 /**

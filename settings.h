@@ -28,8 +28,7 @@
 
 struct lfr_settings {
     uint32_t freq;
-    uint16_t deviation;
-    uint16_t data_rate;
+    uint8_t modem_config;
     uint16_t tcxo_vpull;
     uint16_t tx_gate_bias;
     uint16_t tx_vdd;
@@ -40,7 +39,6 @@ struct lfr_settings {
 };
 
 struct lfr_board_info {
-    uint32_t fw_git_hash;
     const char *sw_ver;
     uint16_t serial_no;
 };

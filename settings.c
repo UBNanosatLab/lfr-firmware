@@ -23,8 +23,7 @@
 
 #define DEFAULT_SETTINGS {\
     .freq = 434000000L,   \
-    .deviation = 2500,    \
-    .data_rate = 10000,   \
+    .modem_config = 1,    \
     .tcxo_vpull = 1256,   \
     .tx_gate_bias = 500,  /* 0.5V bias is enough to see in testing, but very very low output power */ \
     .tx_vdd = 5000,       /* 5V will wake the PA up, but dissipate little heat even with a lot of gate bias */ \
@@ -38,7 +37,7 @@
 const char sw_ver[] = __DATE__ " " __TIME__;
 
 const struct lfr_board_info board_info = {
-    .fw_git_hash = 0,
+//    .fw_git_hash = 0,
     .sw_ver = sw_ver,
     .serial_no = 0x0000
 };

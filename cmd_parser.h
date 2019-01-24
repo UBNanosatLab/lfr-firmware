@@ -23,9 +23,6 @@
 #include <stdbool.h>
 #define MAX_PAYLOAD_LEN 255
 
-#define ECMDBADSUM 0x16
-#define ECMDINVAL  0x13
-
 /* sync word */
 #define SYNCWORD_H 0xbe
 #define SYNCWORD_L 0xef
