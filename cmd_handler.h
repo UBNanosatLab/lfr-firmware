@@ -60,6 +60,32 @@ void cmd_set_txpwr(uint16_t pwr);
 void cmd_tx_data(int len, uint8_t *data);
 
 /**
+ * Set configuration
+ * @param len the length of the cfg data in bytes
+ * @param data pointer to the cfg data
+ */
+void cmd_set_cfg(int len, uint8_t *data);
+
+/**
+ * Get configuration
+ * Returns the configuration data
+ */
+void cmd_get_cfg();
+
+/**
+ * Save configuration
+ * Writes the current configuration data to non-volatile storage
+ */
+void cmd_save_cfg();
+
+/**
+ * Load default configuration
+ * Loads the default (factory) configuration into the volatile settings
+ */
+void cmd_cfg_default();
+
+
+/**
  * Set frequency
  * Changes the frequency
  * @param freq desired frequency in Hz

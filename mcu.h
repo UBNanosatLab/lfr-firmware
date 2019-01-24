@@ -54,4 +54,9 @@ int enable_pin_interrupt(int pin, int edge);
 
 void delay_micros(unsigned long micros);
 
+/**
+ * @brief Set the output voltage of a DAC channel, in mV
+ */
+int set_dac_output(uint8_t chan, uint16_t mv);
+
 #endif

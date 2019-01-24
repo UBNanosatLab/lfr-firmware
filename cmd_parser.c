@@ -23,6 +23,8 @@
 #include <stdio.h>
 #endif
 
+#include "error.h"
+
 void command_handler(uint8_t cmd, uint8_t len, uint8_t* payload);
 
  bool validate_cmd(uint8_t cmd);
@@ -144,6 +146,10 @@ bool validate_cmd(uint8_t cmd) {
     case CMD_SET_TXPWR:
     case CMD_TXDATA:
     case CMD_SET_FREQ:
+    case CMD_GET_CFG:
+    case CMD_SET_CFG:
+    case CMD_SAVE_CFG:
+    case CMD_CFG_DEFAULT:
       return true;
     default:
       return false;
@@ -163,6 +169,8 @@ bool validate_length(uint8_t cmd, uint8_t len) {
       return len > 0;
     case CMD_SET_FREQ:
       return len == 4;
+    case CMD_SET_CFG:
+          return len > 0; // Allow any non-zero here, we check it in the cmd callback
     default:
       return len == 0;
   }
@@ -191,6 +199,7 @@ void command_handler(uint8_t cmd, uint8_t len, uint8_t* payload) {
         break;
       case CMD_SET_TXPWR:
         cmd_set_txpwr((uint16_t) payload[0] << 8 | payload[1]);
+        break;
       case CMD_TXDATA:
         cmd_tx_data(len, payload);
         break;
@@ -198,6 +207,18 @@ void command_handler(uint8_t cmd, uint8_t len, uint8_t* payload) {
         cmd_set_freq((uint32_t) payload[0] << 24 | (uint32_t) payload[1] << 16 | (uint32_t) payload[2] << 8 |
                      payload[3]);
         break;
+      case CMD_GET_CFG:
+          cmd_get_cfg();
+          break;
+      case CMD_SET_CFG:
+          cmd_set_cfg(len, payload);
+        break;
+      case CMD_SAVE_CFG:
+          cmd_save_cfg();
+          break;
+      case CMD_CFG_DEFAULT:
+          cmd_cfg_default();
+          break;
     }
 }
 
