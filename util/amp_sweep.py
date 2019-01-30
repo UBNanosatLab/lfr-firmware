@@ -24,6 +24,7 @@ if __name__ == "__main__":
     drain_voltages = numpy.linspace(5000, 10000, num=11)
     gate_voltages = numpy.linspace(2800, 3300, num=6)
 
+    vbatt = 16.000
 
     radio = Radio(sys.argv[1])
     arduino = serial.Serial(sys.argv[2], 115200)
@@ -47,7 +48,7 @@ if __name__ == "__main__":
                 arduino.write(b'r')
                 fields = arduino.readline().decode('utf-8').split(',')
                 rf_power[i] = ad8318_mv2dbm(int(fields[0])) + atten_db
-                amp_power[i] = ina169_mv2ma(int(fields[2]))
+                amp_power[i] = ina169_mv2ma(int(fields[2])) * vbatt
                 time.sleep(0.100)
 
             print("{:.0f},{:.0f},{:.1f},{:.0f}".format(drain_mv, gate_mv, numpy.median(rf_power), numpy.median(amp_power)))
