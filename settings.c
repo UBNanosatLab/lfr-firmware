@@ -30,7 +30,7 @@
     .tx_vdd = 5000,       /* 5V will wake the PA up, but dissipate little heat even with a lot of gate bias */ \
     .pa_ilimit = 1000,    /* 1A is a bit more than the RA07H4047M draws at Vdd=5V, Vgg=3.5V, Pin=13dBm */ \
     .tx_vdd_delay = 2000, /* 2ms is plenty for the example 5V/1A values */ \
-    .flags = FLAG_CRC_CHECK,\
+    .flags = FLAG_MOD_GFSK | FLAG_CRC_CHECK,\
     .callsign = "NOCALL  "\
 };
 

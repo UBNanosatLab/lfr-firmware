@@ -110,7 +110,23 @@ void cmd_abort_tx()
 void cmd_tx_psr()
 {
     int err;
-    err = si446x_set_mod_type(&dev, MOD_SRC_RAND | MOD_TYPE_2GFSK);
+
+    if ((settings.flags & FLAG_MOD_MASK) == FLAG_MOD_CW) {
+        err = si446x_set_mod_type(&dev, MOD_SRC_RAND | MOD_TYPE_CW);
+    } else if ((settings.flags & FLAG_MOD_MASK) == FLAG_MOD_FSK) {
+        err = si446x_set_mod_type(&dev, MOD_SRC_RAND | MOD_TYPE_2FSK);
+    } else if ((settings.flags & FLAG_MOD_MASK) == FLAG_MOD_GFSK) {
+        err = si446x_set_mod_type(&dev, MOD_SRC_RAND | MOD_TYPE_2GFSK);
+    } else {
+        err = si446x_set_mod_type(&dev, MOD_SRC_RAND | MOD_TYPE_2GFSK);
+    }
+
+    if (err) {
+        reply_error(sys_stat, (uint8_t) -err);
+        return;
+    }
+
+    err = pre_transmit();
     if (err) {
         reply_error(sys_stat, (uint8_t) -err);
         return;

@@ -164,6 +164,20 @@ int reload_config()
         return err;
     }
 
+    if ((settings.flags & FLAG_MOD_MASK) == FLAG_MOD_CW) {
+        err = si446x_set_mod_type(&dev, MOD_TYPE_CW);
+    } else if ((settings.flags & FLAG_MOD_MASK) == FLAG_MOD_FSK) {
+        err = si446x_set_mod_type(&dev, MOD_TYPE_2FSK);
+    } else if ((settings.flags & FLAG_MOD_MASK) == FLAG_MOD_GFSK) {
+        err = si446x_set_mod_type(&dev, MOD_TYPE_2GFSK);
+    } else {
+        err = si446x_set_mod_type(&dev, MOD_TYPE_2GFSK);
+    }
+
+    if (err) {
+        return err;
+    }
+
     return 0;
 }
 
