@@ -82,7 +82,22 @@ void cmd_set_freq(uint32_t freq) {
 
 void cmd_abort_tx()
 {
+
     int err;
+
+    err = post_transmit();
+
+    if (err) {
+        reply_error(sys_stat, (uint8_t) -err);
+        return;
+    }
+
+    err = si446x_abort_tx(&dev);
+    if (err) {
+        reply_error(sys_stat, (uint8_t) -err);
+        return;
+    }
+
     err = si446x_recv_async(&dev, 255, buf, rx_cb);
     if (err) {
         reply_error(sys_stat, (uint8_t) -err);

@@ -32,6 +32,9 @@ class Command(Enum):
     SET_TXPWR = 0x04
     SET_FREQ = 0x05
 
+    TX_PSR = 0x06
+    TX_ABORT = 0x07
+
     GET_CFG = 0x08
     SET_CFG = 0x09
     SAVE_CFG = 0x0A
@@ -94,6 +97,10 @@ class Radio:
     def flush_serial(self):
         self.ser.reset_input_buffer()
 
+    def nop_flush(self, num):
+        for _ in range(num):
+            self.send_pkt(Command.NOP)
+
     def checksum(self, data):
         def feltcher(chksum, byte):
             lsb = chksum & 0xFF
@@ -139,6 +146,30 @@ class Radio:
             err = RadioException(pay[0])
             raise err
         elif Command.NOP.value | Command.REPLY.value:
+            return
+        else:
+            raise Exception('Unexpected response: ' + str((hex(flags), hex(cmd), pay)))
+
+    def tx_psr(self):
+        self.send_pkt(Command.TX_PSR)
+        (flags, cmd, pay) = self.recv()
+
+        if cmd  == Command.ERROR.value | Command.REPLY.value:
+            err = RadioException(pay[0])
+            raise err
+        elif Command.TX_PSR.value | Command.REPLY.value:
+            return
+        else:
+            raise Exception('Unexpected response: ' + str((hex(flags), hex(cmd), pay)))
+
+    def tx_abort(self):
+        self.send_pkt(Command.TX_ABORT)
+        (flags, cmd, pay) = self.recv()
+
+        if cmd  == Command.ERROR.value | Command.REPLY.value:
+            err = RadioException(pay[0])
+            raise err
+        elif Command.TX_ABORT.value | Command.REPLY.value:
             return
         else:
             raise Exception('Unexpected response: ' + str((hex(flags), hex(cmd), pay)))
@@ -365,5 +396,16 @@ if __name__ == '__main__':
     elif (sys.argv[2] == 'default-cfg' and len(sys.argv) == 3):
         radio.cfg_default()
 
+    elif (sys.argv[2] == 'tx-psr' and len(sys.argv) == 3):
+        radio.tx_psr()
+
+    elif (sys.argv[2] == 'tx-abort' and len(sys.argv) == 3):
+        radio.tx_abort()
+
+    elif (sys.argv[2] == 'reset' and len(sys.argv) == 3):
+        radio.nop_flush(60)
+        radio.flush_serial()
+        radio.reset()
+
     else:
-        print('Usage: python3', sys.argv[0], '/dev/<RADIO_UART> [rx | tx n | get-cfg | load-cfg | svae-cfg | default-cfg]')
+        print('Usage: python3', sys.argv[0], '/dev/<RADIO_UART> [rx | tx n | get-cfg | load-cfg | save-cfg | default-cfg | tx-psr | tx-abort | reset]')

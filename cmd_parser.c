@@ -145,6 +145,8 @@ bool validate_cmd(uint8_t cmd) {
     case CMD_READ_TXPWR:
     case CMD_SET_TXPWR:
     case CMD_TXDATA:
+    case CMD_TX_PSR:
+    case CMD_TX_ABORT:
     case CMD_SET_FREQ:
     case CMD_GET_CFG:
     case CMD_SET_CFG:
@@ -206,6 +208,12 @@ void command_handler(uint8_t cmd, uint8_t len, uint8_t* payload) {
       case CMD_SET_FREQ:
         cmd_set_freq((uint32_t) payload[0] << 24 | (uint32_t) payload[1] << 16 | (uint32_t) payload[2] << 8 |
                      payload[3]);
+        break;
+      case CMD_TX_PSR:
+        cmd_tx_psr();
+        break;
+      case CMD_TX_ABORT:
+        cmd_abort_tx();
         break;
       case CMD_GET_CFG:
           cmd_get_cfg();
