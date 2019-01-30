@@ -96,6 +96,10 @@ int set_modem_config(uint8_t cfg)
     static const struct modem_cfg cfg_10k_data_5k_dev_struct = CFG_DATA_10K_DEV_5K;
     static const struct modem_cfg cfg_25k_data_6k25_dev_struct = CFG_DATA_25K_DEV_6K25;
     static const struct modem_cfg cfg_25k_data_12k5_dev_struct = CFG_DATA_25K_DEV_12K5;
+    static const struct modem_cfg cfg_50k_data_12k5_dev_struct = CFG_DATA_50K_DEV_12K5;
+    static const struct modem_cfg cfg_50k_data_25k_dev_struct = CFG_DATA_50K_DEV_25K;
+    static const struct modem_cfg cfg_100k_data_25k_dev_struct = CFG_DATA_100K_DEV_25K;
+    static const struct modem_cfg cfg_100k_data_50k_dev_struct = CFG_DATA_100K_DEV_50K;
 
     const struct modem_cfg *cfg_struct;
 
@@ -123,6 +127,23 @@ int set_modem_config(uint8_t cfg)
     case DATA_25K_DEV_12K5:
         cfg_struct = &cfg_25k_data_12k5_dev_struct;
         break;
+
+    case DATA_50K_DEV_12K5:
+        cfg_struct = &cfg_50k_data_12k5_dev_struct;
+        break;
+
+    case DATA_50K_DEV_25K:
+        cfg_struct = &cfg_50k_data_25k_dev_struct;
+        break;
+
+    case DATA_100K_DEV_25K:
+        cfg_struct = &cfg_100k_data_25k_dev_struct;
+        break;
+
+    case DATA_100K_DEV_50K:
+        cfg_struct = &cfg_100k_data_50k_dev_struct;
+        break;
+
 
     default:
         if (cfg & 0xF0) {
@@ -200,6 +221,13 @@ int set_modem_config(uint8_t cfg)
     err = si446x_send_cfg_data_wait(&dev,
                                 sizeof(cfg_struct->modem_chflt_coe7_7_0_12),
                                 cfg_struct->modem_chflt_coe7_7_0_12);
+    if (err) {
+        return err;
+    }
+
+    err = si446x_send_cfg_data_wait(&dev,
+                                sizeof(cfg_struct->rf_synth_pfdcp_cpff),
+                                cfg_struct->rf_synth_pfdcp_cpff);
 
     return err;
 

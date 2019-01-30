@@ -115,14 +115,15 @@ def main():
     #              Configuration           #
     ########################################
 
-    port = "/dev/tty.SLAB_USBtoUART"
+    port = '/dev/tty.SLAB_USBtoUART'
     baud = 115200
 
     freq = 434.000e6
     tune_offset = 250e3
-    samp_rate = 4e6
-    sym_rate = 40e3
-    deviation = 10e3
+    samp_rate = 2e6
+    sym_rate = 10e3
+    deviation = 5e3
+    lfr_modem_cfg = 7
 
     usrp = True
     lime = False
@@ -130,10 +131,13 @@ def main():
 
     num_pkts = 100
 
-    hw_gain = 25
-    gain_offset = -100
+    hw_gain = 30
+    hw_atten = 60
+    usrp_chan_power = -36.6
 
-    lvls = numpy.linspace(-7.0, -0.0, 8).tolist()
+    gain_offset = usrp_chan_power - hw_atten
+
+    lvls = (numpy.linspace(-110.0, -100.0, 11) - gain_offset).tolist()
 
     ########################################
 
@@ -170,6 +174,7 @@ def main():
     
     cfg = lfr.get_cfg()
     cfg['flags'] &= ~(1) # CRC_ENABLE
+    cfg['modem_config'] =  (cfg['modem_config'] & 0xF0) | lfr_modem_cfg
     lfr.set_cfg(cfg)
 
 
@@ -188,7 +193,7 @@ def main():
         global num_bits
         global num_errs
         logging.info('')
-        logging.info('Power: {: >3.1f} dBm  Bits sent: {: >8}  Bits Errors: {: >5}  log10(BER)= {:.02f}'\
+        logging.info('Power: {: >3.1f} dBm  Bits received: {: >8}  Bits Errors: {: >5}  log10(BER)= {:.02f}'\
         .format(lvls[0] + gain_offset, num_bits, num_errs, math.log10(num_errs + 0.001) - math.log10(num_bits + 0.001)))
         
         lvls[:] = lvls[1:]
@@ -213,6 +218,10 @@ def main():
         timer.start()
 
     timer = Timer(num_pkts * pkt_delay, step_pwr_lvl)
+
+    logging.info('LFR BER Test')
+    logging.info('Sym Rate: {:.03f} kbit/s    Deviation: {:.03f} kHz    LFR Modem Config: 0x{:02X}'.format(sym_rate / 1000.0, deviation / 1000.0, lfr_modem_cfg))
+    logging.info('-' * 80)
     
     logging.info('Starting at power level: {} dBm'.format(lvls[0] + gain_offset))
     tb.set_sw_gain(lvls[0])
