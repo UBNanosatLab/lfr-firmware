@@ -158,10 +158,14 @@ void cmd_set_cfg(int len, uint8_t *data)
         settings.callsign[j] = data[i++];
     }
 
-    reload_config();
+    int err = reload_config();
 
-    set_cmd_flag(FLAG_GOODCMD);
-    reply(sys_stat, CMD_SET_CFG, 0, NULL);
+    if (err) {
+        reply_error(sys_stat, (uint8_t) -err);
+    } else {
+        set_cmd_flag(FLAG_GOODCMD);
+        reply(sys_stat, CMD_SET_CFG, 0, NULL);
+    }
 
 }
 

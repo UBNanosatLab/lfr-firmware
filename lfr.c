@@ -202,7 +202,12 @@ int main(void)
         return err;
     }
 
-    reload_config();
+    err = reload_config();
+
+    if (err) {
+        settings_load_default();
+        // TODO: Report this error
+    }
 
     err = si446x_config_crc(&dev, CRC_SEED_1 | CRC_CCIT_16);
     if (err) {
