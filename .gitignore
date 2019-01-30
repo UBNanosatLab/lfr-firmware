@@ -6,3 +6,5 @@ Debug/*
 */__pycache__/
 *.json
 *.csv
+
+*.pyc
