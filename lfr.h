@@ -29,6 +29,7 @@ int reload_config();
 void set_cmd_flag(uint8_t flag);
 int pre_transmit();
 int post_transmit();
+int reset_si446x();
 void rx_cb(struct si446x_device *dev, int err, int len, uint8_t *data);
 void tx_cb(struct si446x_device *dev, int err);
 

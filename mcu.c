@@ -609,3 +609,31 @@ int enable_pin_interrupt(int pin, int edge)
 
     return 0;
 }
+
+/**
+ * @brief Disable a GPIO pin interrupt
+ *
+ * Disables all interrupts on a GPIO pin. Does not change the input state or
+ * interrupt trigger edge of the pin. Clears pending interrupts.
+ *
+ * @param pin The pin to configure.  Takes a single byte, whose upper nibble
+ *            specifies the port, and lower nibble specifies the pin.  E.g.
+ *            0x23 translates to port 2, pin 3
+ */
+int disable_pin_interrupt(int pin)
+{
+    __disable_interrupt();
+    unsigned int port = (pin >> 4) & 0x0F;
+    unsigned int pin_num = (pin >> 0) & 0x07;
+
+    char cur_ie = *gpio_ie_for_port[port];
+    *gpio_ie_for_port[port] = cur_ie & ~(1 << pin_num);
+
+    // Clear any pending interrupts on this pin
+    // You may not want this in the future...
+    *gpio_ifg_for_port[port] &= ~(1 << pin_num);
+
+    __enable_interrupt(); // enable all interrupts
+
+    return 0;
+}

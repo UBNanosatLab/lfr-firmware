@@ -181,6 +181,62 @@ int reload_config()
     return 0;
 }
 
+int config_si446x()
+{
+    int err;
+
+    err = reload_config();
+
+    if (err) {
+        settings_load_default();
+        // TODO: Report this error
+    }
+
+    err = si446x_config_crc(&dev, CRC_SEED_1 | CRC_CCIT_16);
+    if (err) {
+        return err;
+    }
+
+    err = si446x_set_tx_pwr(&dev, 0x14);
+    if (err) {
+        return err;
+    }
+
+    err = si446x_cfg_gpio(&dev, GPIO_SYNC_WORD_DETECT, GPIO_TX_DATA, GPIO_TX_DATA_CLK, GPIO_RX_STATE);
+    if (err) {
+        return err;
+    }
+
+    return ESUCCESS;
+}
+
+int reset_si446x()
+{
+
+    int err;
+
+    // Disable pin interrupts while we reset
+    disable_pin_interrupt(GPIO0);
+    disable_pin_interrupt(INT_PIN);
+
+    err = si446x_reinit(&dev);
+
+    if (err) {
+        return err;
+    }
+
+    err = config_si446x();
+    if (err) {
+        return err;
+    }
+
+    enable_pin_interrupt(GPIO0, RISING);
+    enable_pin_interrupt(INT_PIN, FALLING);
+
+    return ESUCCESS;
+
+}
+
 int main(void)
 {
     int err;
@@ -216,53 +272,19 @@ int main(void)
         return err;
     }
 
-    err = reload_config();
+    config_si446x();
 
-    if (err) {
-        settings_load_default();
-        // TODO: Report this error
-    }
-
-    err = si446x_config_crc(&dev, CRC_SEED_1 | CRC_CCIT_16);
-    if (err) {
-        error(-err, __FILE__, __LINE__);
-        return err;
-    }
-
-    err = si446x_set_tx_pwr(&dev, 0x14);
-    if (err) {
-        error(-err, __FILE__, __LINE__);
-        return err;
-    }
-
-    err = si446x_cfg_gpio(&dev, GPIO_SYNC_WORD_DETECT, GPIO_TX_DATA, GPIO_TX_DATA_CLK, GPIO_RX_STATE);
-    if (err) {
-        error(-err, __FILE__, __LINE__);
-        return err;
-    }
-
-    printf("Successfully initialized Si4464!\n");
+    printf("Successfully initialized Si446x!\n");
 
     enable_pin_interrupt(GPIO0, RISING);
     enable_pin_interrupt(INT_PIN, FALLING);
 
-//    uint8_t rst[] = {'R', 'E', 'S', 'E', 'T'};
-//
-//    gpio_write(TX_ACT_PIN, HIGH);
-//    set_gate_bias(tx_gate_bias);
-//    err = si446x_send(&dev, sizeof(rst), rst);
-//    set_gate_bias(0x000);
-//    gpio_write(TX_ACT_PIN, LOW);
-//
-//    if (err) {
-//        error(-err, __FILE__, __LINE__);
-//        return err;
-//    }
-//    sys_stat &= ~(FLAG_TXBUSY);
-
-
     err = si446x_recv_async(&dev, 255, buf, rx_cb);
 
+    if (err) {
+        error(-err, __FILE__, __LINE__);
+        return err;
+    }
 
     // Main loop
     while (true) {
@@ -272,7 +294,10 @@ int main(void)
             err = si446x_update(&dev);
             if (err) {
                 printf("Err: %d", err);
-                si446x_reset(&dev);
+                // TODO: Better error handling
+                si446x_reinit(&dev);
+                config_si446x();
+                si446x_recv_async(&dev, 255, buf, rx_cb);
                 reply_error(sys_stat, -err);
             }
         } else if(uart_available()) {
@@ -313,7 +338,10 @@ __interrupt void ping_timer_isr()
 
     if (do_pong) {
         do_pong = false;
-        si446x_fire_tx(&dev);
+        if (si446x_fire_tx(&dev) == -ERESETSI) {
+            reset_si446x();
+            si446x_recv_async(&dev, 255, buf, rx_cb);
+        }
     }
 }
 

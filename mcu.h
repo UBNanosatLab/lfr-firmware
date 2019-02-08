@@ -51,6 +51,7 @@ void gpio_config(int pin, int mode);
 void gpio_write(int pin, int value);
 unsigned char gpio_read(int pin);
 int enable_pin_interrupt(int pin, int edge);
+int disable_pin_interrupt(int pin);
 
 void delay_micros(unsigned long micros);
 

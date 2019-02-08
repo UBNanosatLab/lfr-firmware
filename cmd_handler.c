@@ -51,20 +51,40 @@ void cmd_get_txpwr() {
 }
 
 void cmd_tx_data(int len, uint8_t *data) {
+    int attempts;
+    int err;
+
     memcpy(buf, data, len);
 
     sys_stat |= FLAG_TXBUSY;
     pre_transmit();
 
-    int err = si446x_send_async(&dev, len, buf, tx_cb);
+    for (attempts = 0; attempts < 3; attempts++) {
+    
+        err = si446x_send_async(&dev, len, buf, tx_cb);
+        
+        if (err == -ERESETSI) {
+            
+            err = reset_si446x();
+            if (err) {
+                reply_error(sys_stat, (uint8_t) -err);
+                return;
+            }
 
-    if (err) {
-        // Halt and catch fire
-        reply_error(sys_stat, (uint8_t) -err);
-    } else {
-        set_cmd_flag(FLAG_GOODCMD);
-        reply(sys_stat, CMD_TXDATA, 0, NULL);
+            // Retry
+
+        } else if (err) {
+            reply_error(sys_stat, (uint8_t) -err);
+            return;
+        } else {
+            set_cmd_flag(FLAG_GOODCMD);
+            reply(sys_stat, CMD_TX_PSR, 0, NULL);
+            return;
+        }
     }
+
+    // Give up
+    reply_error(sys_stat, (uint8_t) ETIMEOUT);
 }
 
 void cmd_set_freq(uint32_t freq) {
@@ -110,6 +130,7 @@ void cmd_abort_tx()
 void cmd_tx_psr()
 {
     int err;
+    int attempts;
 
     if ((settings.flags & FLAG_MOD_MASK) == FLAG_MOD_CW) {
         err = si446x_set_mod_type(&dev, MOD_SRC_RAND | MOD_TYPE_CW);
@@ -132,13 +153,29 @@ void cmd_tx_psr()
         return;
     }
 
-    err = si446x_fire_tx(&dev);
-    if (err) {
-        reply_error(sys_stat, (uint8_t) -err);
-    } else {
-        set_cmd_flag(FLAG_GOODCMD);
-        reply(sys_stat, CMD_TX_PSR, 0, NULL);
+    for (attempts = 0; attempts < 3; attempts++) {
+        err = si446x_fire_tx(&dev);
+        
+        if (err == -ERESETSI) {
+
+            err = reset_si446x();
+            if (err) {
+                reply_error(sys_stat, (uint8_t) -err);
+                return;
+            }
+
+            // Retry
+
+        } else if (err) {
+            reply_error(sys_stat, (uint8_t) -err);
+        } else {
+            set_cmd_flag(FLAG_GOODCMD);
+            reply(sys_stat, CMD_TX_PSR, 0, NULL);
+        }
     }
+
+    // Give up
+    reply_error(sys_stat, (uint8_t) ETIMEOUT);
 }
 
 void cmd_set_cfg(int len, uint8_t *data)
