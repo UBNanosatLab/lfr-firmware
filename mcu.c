@@ -145,14 +145,19 @@ void bc_uart_init()
     // Config UCA1 (debug UART)
     // For 8 MHz SMCLK
     UCA1CTLW0 = UCSWRST;                    // Put eUSCI in reset
+
+    // Assuming 8 MHz SMCLK
+    // See User's Guide Table 30-5 on page 779
+
     UCA1CTLW0 |= UCSSEL__SMCLK;             // CLK = SMCLK
     // Baud Rate calculation
     // Table 30-5
-    UCA1BRW = 52;
-    //                             UCBRSx
-    UCA1MCTLW = UCOS16 | UCBRF_1 | 0x4900;
-    UCA1CTLW0 &= ~UCSWRST;                  // Initialize eUSCI
+    // 115200
+    UCA1BRW = 4;
+    //                    UCBRFx   UCBRSx
+    UCA1MCTLW = UCOS16 | UCBRF_5 | 0x5500;
 
+    UCA1CTLW0 &= ~UCSWRST;                  // Initialize eUSCI
 }
 
 int fputc(int _c, register FILE *_fp)
