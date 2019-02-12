@@ -11,8 +11,11 @@
 // Import all lib446x errors
 #include "lib446x/si446x.h"
 
-#define ECMDBADSUM 0x16
-#define ECMDINVAL  0x13
+#define EOVERFLOW 11
+#define EUNDERFLOW 12
+#define ECMDINVAL   19
+#define ECMDBADSUM  22
+
 
 
 #endif /* ERROR_H_ */

@@ -17,6 +17,7 @@
  */
 
 #include "rbuf.h"
+#include "error.h"
 
 int rbuf_put(rbuf* buf, char c){
   static uint16_t next;

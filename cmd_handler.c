@@ -54,37 +54,39 @@ void cmd_tx_data(int len, uint8_t *data) {
     int attempts;
     int err;
 
-    memcpy(buf, data, len);
+    err = pkt_buf_enqueue(&tx_queue, len, data);
 
-    sys_stat |= FLAG_TXBUSY;
-    pre_transmit();
+    if (err) {
+        reply_error(sys_stat, (uint8_t) -err);
+    } else {
+        if (!(sys_stat & FLAG_TXBUSY)) {
+            sys_stat |= FLAG_TXBUSY;
+            pre_transmit();
 
-    for (attempts = 0; attempts < 3; attempts++) {
-    
-        err = si446x_send_async(&dev, len, buf, tx_cb);
-        
-        if (err == -ERESETSI) {
-            
-            err = reset_si446x();
+            uint16_t pkt_len = MAX_PAYLOAD_LEN;
+            err = pkt_buf_dequeue(&tx_queue, &pkt_len, buf);
+
             if (err) {
                 reply_error(sys_stat, (uint8_t) -err);
-                return;
             }
 
-            // Retry
+            err = send_w_retry(pkt_len, buf);
 
-        } else if (err) {
-            reply_error(sys_stat, (uint8_t) -err);
-            return;
+            if (err) {
+                reply_error(sys_stat, (uint8_t) -err);
+            } else {
+                reply(sys_stat, CMD_TXDATA, 0, NULL);
+            }
         } else {
-            set_cmd_flag(FLAG_GOODCMD);
-            reply(sys_stat, CMD_TX_PSR, 0, NULL);
-            return;
+            reply(sys_stat, CMD_TXDATA, 0, NULL);
         }
     }
+}
 
-    // Give up
-    reply_error(sys_stat, (uint8_t) ETIMEOUT);
+void cmd_get_queue_depth() {
+    uint16_t depth = pkt_buf_depth(&tx_queue);
+    uint8_t data[] = {depth >> 8, depth & 0xFF};
+    reply(sys_stat, CMD_GET_QUEUE_DEPTH, sizeof(data), data);
 }
 
 void cmd_set_freq(uint32_t freq) {

@@ -44,12 +44,10 @@
 #define CMD_SET_CFG 9
 #define CMD_SAVE_CFG 10
 #define CMD_CFG_DEFAULT 11
+#define CMD_GET_QUEUE_DEPTH 12
 
 /* not really a command, only used in spontaneous reports */
 #define CMD_RXDATA 16
-
-#define CMD_START_BER_TEST 32
-#define CMD_STOP_BER_TEST 33
 
 #define CMD_ERR 0xFF
 

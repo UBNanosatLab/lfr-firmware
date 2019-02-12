@@ -28,6 +28,10 @@
 #include "msp430_uart.h"
 #include "cmd_parser.h"
 #include "settings.h"
+#include "pkt_buf.h"
+
+// Backing buffer for tx_queue
+uint8_t __attribute__((persistent)) tx_backing_buf[16384] = {0};
 
 uint8_t buf[255];
 
@@ -35,12 +39,14 @@ uint8_t buf[255];
 uint8_t sys_stat = 0;
 
 struct si446x_device dev;
+struct pkt_buf tx_queue;
 
 volatile bool do_pong = false;
 volatile bool radio_irq = true;
 
 void tx_cb(struct si446x_device *dev, int err);
 void rx_cb(struct si446x_device *dev, int err, int len, uint8_t *data);
+int reset_si446x();
 
 void set_cmd_flag(uint8_t flag){
     sys_stat &= ~(FLAG_GOODCMD | FLAG_INVALID | FLAG_BADSUM);
@@ -82,16 +88,71 @@ int post_transmit()
     return 0;
 }
 
+int send_w_retry(int len, uint8_t *buf)
+{
+    int attempts;
+    int err;
+
+    pre_transmit();
+
+    for (attempts = 0; attempts < 3; attempts++) {
+
+        err = si446x_send_async(&dev, len, buf, tx_cb);
+
+        if (err == -ERESETSI) {
+
+            err = reset_si446x();
+            if (err) {
+                return err;
+            }
+
+            // Retry
+
+        } else if (err) {
+            return err;
+        } else {
+            return ESUCCESS;
+        }
+    }
+
+    // Give up
+    return -ETIMEOUT;
+}
+
 void tx_cb(struct si446x_device *dev, int err)
 {
     if (err) {
         reply_error(sys_stat, (uint8_t) -err);
     }
 
-    post_transmit();
-    sys_stat &= ~(FLAG_TXBUSY);
-    si446x_recv_async(dev, 255, buf, rx_cb);
     wdt_feed();
+
+    if (pkt_buf_depth(&tx_queue) > 0) {
+        int pkt_len = MAX_PAYLOAD_LEN;
+        err = pkt_buf_dequeue(&tx_queue, &pkt_len, buf);
+
+        if (err) {
+            reply_error(sys_stat, (uint8_t) -err);
+            post_transmit();
+            sys_stat &= ~(FLAG_TXBUSY);
+            si446x_recv_async(dev, 255, buf, rx_cb);
+            return;
+        }
+
+        err = send_w_retry(pkt_len, buf);
+
+        if (err) {
+            reply_error(sys_stat, (uint8_t) -err);
+            post_transmit();
+            sys_stat &= ~(FLAG_TXBUSY);
+            si446x_recv_async(dev, 255, buf, rx_cb);
+            return;
+        }
+    } else {
+        post_transmit();
+        sys_stat &= ~(FLAG_TXBUSY);
+        si446x_recv_async(dev, 255, buf, rx_cb);
+    }
 }
 
 void rx_cb(struct si446x_device *dev, int err, int len, uint8_t *data)
@@ -243,6 +304,7 @@ int main(void)
     WDTCTL = WDTPW | WDTHOLD;   // stop watchdog timer
 
     settings_load_saved();
+    pkt_buf_init(&tx_queue, sizeof(tx_backing_buf), tx_backing_buf);
     mcu_init();
     uart_init();
 

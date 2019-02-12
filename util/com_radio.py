@@ -39,6 +39,7 @@ class Command(Enum):
     SET_CFG = 0x09
     SAVE_CFG = 0x0A
     CFG_DEFAULT = 0x0B
+    CMD_GET_QUEUE_DEPTH = 0x0C
 
     RXDATA = 0x10
 
@@ -76,8 +77,26 @@ class RadioException(Exception):
             self.error = 'EBUSY'
             self.msg = 'pending operation'
         elif code == 8:
-            self.error = 'ERXTIMEOUT'
-            self.msg = 'Si446x RX timed out (zero len bug?)'
+            self.error = 'ESILICON'
+            self.msg = 'Si446x silicon bug (zero len bug?); Try again'
+        elif code == 9:
+            self.error = 'ERESETSI'
+            self.msg = 'Si446x silicon bug; Reset and try again'
+        elif code == 11:
+            self.error = 'EOVERFLOW'
+            self.msg = 'Buffer full'
+        elif code == 12:
+            self.error = 'EUNDERFLOW'
+            self.msg = 'Buffer empty'
+        elif code == 19:
+            self.error = 'ECMDINVAL'
+            self.msg = 'Not a valid command'
+        elif code == 22:
+            self.error = 'ECMDBADSUM'
+            self.msg = 'Bad command checksum'
+        elif code == 127:
+            self.error = 'ENOTIMPL'
+            self.msg = 'Feature not implemented'
         else:
             self.error = 'UNKNOWN'
             self.msg = 'An unknown error occurred (' + str(code) + ')'
@@ -204,7 +223,8 @@ class Radio:
 
         if cmd  == Command.ERROR.value | Command.REPLY.value:
             err = RadioException(pay[0])
-            if err.error == 'EBUSY':
+            if err.error == 'EOVERFLOW':
+                sleep(0.05)
                 self.tx(data)
             else:
                 raise err

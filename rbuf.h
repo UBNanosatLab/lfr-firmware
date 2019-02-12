@@ -17,9 +17,8 @@
  */
 
 #define RBUF_SIZE 128
-#define EOVERFLOW 11
-#define EUNDERFLOW 12
 #include <stdint.h>
+#include "error.h"
 
 #ifdef __cplusplus
 extern "C" {

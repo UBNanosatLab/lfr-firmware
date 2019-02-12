@@ -152,6 +152,7 @@ bool validate_cmd(uint8_t cmd) {
     case CMD_SET_CFG:
     case CMD_SAVE_CFG:
     case CMD_CFG_DEFAULT:
+    case CMD_GET_QUEUE_DEPTH:
       return true;
     default:
       return false;
@@ -226,6 +227,9 @@ void command_handler(uint8_t cmd, uint8_t len, uint8_t* payload) {
           break;
       case CMD_CFG_DEFAULT:
           cmd_cfg_default();
+          break;
+      case CMD_GET_QUEUE_DEPTH:
+          cmd_get_queue_depth();
           break;
     }
 }

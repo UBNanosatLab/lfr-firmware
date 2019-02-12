@@ -111,6 +111,12 @@ void cmd_tx_psr();
 void cmd_rx_data();
 
 /**
+ * Get the depth of the transmit queue
+ * Returns the (16-bit) depth of the queue
+ */
+void cmd_get_queue_depth();
+
+/**
  * Send an error back
  * @param err the (positive) error code
  */
