@@ -19,11 +19,14 @@
 #ifndef LFR_H_
 #define LFR_H_
 
+#include "pkt_buf.h"
+
 /* Global variables */
 extern struct si446x_device dev;
 extern uint8_t buf[255];
 extern volatile bool do_pong;
 extern uint8_t sys_stat;
+extern struct pkt_buf tx_queue;
 
 int reload_config();
 void set_cmd_flag(uint8_t flag);
@@ -32,5 +35,6 @@ int post_transmit();
 int reset_si446x();
 void rx_cb(struct si446x_device *dev, int err, int len, uint8_t *data);
 void tx_cb(struct si446x_device *dev, int err);
+int send_w_retry(int len, uint8_t *buf);
 
 #endif /* LFR_H_ */
