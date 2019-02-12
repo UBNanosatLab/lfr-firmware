@@ -35,7 +35,7 @@
 };
 
 
-const char sw_ver[] = __DATE__ " " __TIME__;
+const char sw_ver[] = "v19.02.0rc1 " __DATE__ " " __TIME__;
 
 const struct lfr_board_info board_info = {
 //    .fw_git_hash = 0,
