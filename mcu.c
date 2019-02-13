@@ -39,6 +39,9 @@ unsigned char _i2c_tx_bytes; //bytes to send this transaction
 unsigned char *_i2c_tx_data; //pointer to buffer of data to send
 volatile bool _i2c_did_nack = false;
 
+uint32_t __attribute__((persistent)) reset_count = 0;
+uint32_t __attribute__((persistent)) wdt_reset_count = 0;
+
 static volatile unsigned char *const gpio_dir_for_port[] =
 {
     0x0000,
@@ -225,6 +228,11 @@ void init_clock()
 
 void mcu_init()
 {
+    reset_count++;
+    if(SYSRSTIV == SYSRSTIV__WDTIFG){
+        wdt_reset_count++;
+    }
+
     PM5CTL0 &= ~LOCKLPM5;                                   // Disable the GPIO power-on default high-impedance mode
 
     init_clock();
@@ -245,7 +253,7 @@ void mcu_init()
 
     // 16 sec w/ 32.768 kHz ACLK
     // TODO: Re-enable
-//     WDTCTL = WDTPW | WDTSSEL__ACLK | WDTCNTCL | WDTIS__512K;
+    WDTCTL = WDTPW | WDTSSEL__ACLK | WDTCNTCL | WDTIS__512K;
 
     __enable_interrupt();
 }
@@ -255,7 +263,14 @@ void wdt_feed(){
 }
 
 void mcu_reset(){
-    WDTCTL = 0;
+    PMMCTL0 |= PMMSWBOR;
+}
+
+uint32_t get_reset_count(){
+    return reset_count;
+}
+uint32_t get_wdt_reset_count(){
+    return wdt_reset_count;
 }
 
 /** @brief Initialize internal I2C bus

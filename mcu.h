@@ -39,6 +39,9 @@ void mcu_init();
 void mcu_reset();
 void wdt_feed();
 
+uint32_t get_reset_count();
+uint32_t get_wdt_reset_count();
+
 void i2c_init();
 int i2c_write(unsigned char slave_addr, unsigned char *buf, unsigned char len);
 
