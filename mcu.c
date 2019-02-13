@@ -253,7 +253,7 @@ void mcu_init()
 
     // 16 sec w/ 32.768 kHz ACLK
     // TODO: Re-enable
-    WDTCTL = WDTPW | WDTSSEL__ACLK | WDTCNTCL | WDTIS__512K;
+//    WDTCTL = WDTPW | WDTSSEL__ACLK | WDTCNTCL | WDTIS__512K;
 
     __enable_interrupt();
 }
