@@ -179,14 +179,7 @@ bool validate_length(uint8_t cmd, uint8_t len) {
   }
 }
 
-/* update the mod-256 Fletcher checksum with the byte c */
-uint16_t fletcher(uint16_t old_checksum, uint8_t c) {
-  uint8_t lsb, msb;
-  lsb = old_checksum;
-  msb = (old_checksum >> 8) + c;
-  lsb += msb;
-  return ((uint16_t) msb<<8) | (uint16_t)lsb;
-}
+
 
 void command_handler(uint8_t cmd, uint8_t len, uint8_t* payload) {
 

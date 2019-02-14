@@ -61,6 +61,7 @@ void cmd_tx_data(int len, uint8_t *data) {
     } else {
         if (!(sys_stat & FLAG_TXBUSY)) {
             sys_stat |= FLAG_TXBUSY;
+            //TODO: check return from pre_transmit and report if it errors
             pre_transmit();
 
             uint16_t pkt_len = MAX_PAYLOAD_LEN;

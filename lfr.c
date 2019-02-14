@@ -29,6 +29,7 @@
 #include "cmd_parser.h"
 #include "settings.h"
 #include "pkt_buf.h"
+#include "simple-ota.h"
 
 // Backing buffer for tx_queue
 uint8_t __attribute__((persistent)) tx_backing_buf[16384] = {0};
@@ -185,6 +186,9 @@ void rx_cb(struct si446x_device *dev, int err, int len, uint8_t *data)
         do_pong = true;
 
         return;
+    } else if(len > OTA_MIN_LEN && data[0] == OTA_FLAG){
+        //Handle OTA command
+        ota_handler(data, len);
     } else {
         // Handle RX'd packet
         reply(sys_stat, CMD_RXDATA, len, data);
