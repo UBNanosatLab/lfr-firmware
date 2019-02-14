@@ -19,6 +19,10 @@
 
 #define OTA_FLAG 0xDB
 #define OTA_KEY "LinkSat=BestSat"
+#define OTA_KEY_LEN (16)
+#define OTA_CMD_OFFSET (16)
+#define OTA_PAYLOAD_LEN_OFFSET (17)
+#define OTA_PAYLOAD_OFFSET (18)
 #define OTA_MIN_LEN (20) //Minimum length is 1 flag + 15 key + 1 command + 1 payload length + 2 checksum
 /*
  * Over-the-air command structure:
