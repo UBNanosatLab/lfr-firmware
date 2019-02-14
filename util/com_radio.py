@@ -218,7 +218,7 @@ class Radio:
             raise Exception('Unexpected response: ' + str((hex(flags), hex(cmd), pay)))
 
     def tx(self, data):
-        self.send_pkt(Command.TXDATA, data.encode('utf-8'))
+        self.send_pkt(Command.TXDATA, data if isinstance(data, bytes) else data.encode('utf-8'))
         (flags, cmd, pay) = self.recv()
 
         if cmd  == Command.ERROR.value | Command.REPLY.value:
