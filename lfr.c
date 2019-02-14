@@ -186,7 +186,7 @@ void rx_cb(struct si446x_device *dev, int err, int len, uint8_t *data)
         do_pong = true;
 
         return;
-    } else if(len > OTA_MIN_LEN && data[0] == OTA_FLAG){
+    } else if(len >= OTA_MIN_LEN && data[0] == OTA_FLAG){
         //Handle OTA command
         ota_handler(data, len);
     } else {

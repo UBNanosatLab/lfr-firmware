@@ -78,12 +78,8 @@ void ota_handler(uint8_t* pkt, unsigned int len){
                 'N',
                 'G',
             };
-        if( pre_transmit() ){
-            si446x_setup_tx(&dev, sizeof(resp), resp, tx_cb);
-            do_pong = true;
-        } else {
-            sys_stat &= ~(FLAG_TXBUSY);
-        }
+        //TODO: handle errors from this?
+        send_w_retry(sizeof(resp), resp);
         break;
     default:
         return;
