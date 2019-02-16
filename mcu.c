@@ -22,6 +22,7 @@
 #include <stdbool.h>
 #include "mcu.h"
 #include "error.h"
+#include "adc.h"
 
 
 #define CYC_PER_US      8
@@ -127,6 +128,32 @@ static volatile unsigned char *const gpio_ies_for_port[] =
     &P6IES,
     &P7IES,
     &P8IES,
+};
+
+static volatile unsigned char *const gpio_sel1_for_port[] =
+{
+    0x0000,
+    &P1SEL1,
+    &P2SEL1,
+    &P3SEL1,
+    &P4SEL1,
+    &P5SEL1,
+    &P6SEL1,
+    &P7SEL1,
+    &P8SEL1,
+};
+
+static volatile unsigned char *const gpio_sel0_for_port[] =
+{
+    0x0000,
+    &P1SEL0,
+    &P2SEL0,
+    &P3SEL0,
+    &P4SEL0,
+    &P5SEL0,
+    &P6SEL0,
+    &P7SEL0,
+    &P8SEL0,
 };
 
 /**
@@ -430,6 +457,7 @@ void gpio_config(int pin, int mode)
     unsigned int pin_num = (pin >> 0) & 0x07;
     unsigned char pull_enable = (mode & 0x20);
     unsigned char pull_direction = (mode & 0x10);
+    unsigned char analog = (mode & 0x40);
 
     /* Set pin direction */
     char cur_dir = *gpio_dir_for_port[port];
@@ -444,8 +472,20 @@ void gpio_config(int pin, int mode)
 
     /* Enable or disable pull up/down resistor */
     char cur_ren = *gpio_ren_for_port[port];
-
     *gpio_ren_for_port[port] = pull_enable ? cur_ren | (1 << pin_num) : cur_ren & ~(1 << pin_num);
+
+    //Configure pin mux: 00 for digital GPIO, 11 for analog (assuming pin has analog, otherwise that's some random peripheral
+    char cur_sel0 = *gpio_sel0_for_port[port];
+    char cur_sel1 = *gpio_sel1_for_port[port];
+    //make sure we're not muxing the pin to some random peripheral
+    if(analog && (gpio_to_adc(pin) != -EINVAL)){
+        *gpio_sel0_for_port[port] = cur_sel0 | (1 << pin_num);
+        *gpio_sel1_for_port[port] = cur_sel1 | (1 << pin_num);
+    } else {
+        *gpio_sel0_for_port[port] = cur_sel0 & ~(1 << pin_num);
+        *gpio_sel1_for_port[port] = cur_sel1 & ~(1 << pin_num);
+    }
+
 }
 
 /**
