@@ -30,6 +30,7 @@
 #include "settings.h"
 #include "pkt_buf.h"
 #include "status.h"
+#include "adc.h"
 
 // Backing buffer for tx_queue
 uint8_t __attribute__((persistent)) tx_backing_buf[16384] = {0};
