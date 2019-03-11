@@ -75,6 +75,21 @@ int pre_transmit()
     return 0;
 }
 
+int pa_power_keepalive(){
+    //Pulse the PA_PWR_EN pin low to recharge the RC filter cap
+    int err;
+    //cut the drain current by killing the gate bias
+    err = set_gate_bias(0);
+    if(err) return err;
+    gpio_write(PA_PWR_EN_PIN, LOW);
+    //turn the gate bias back on
+    //use the I2C transaction period as the delay to recharge the cap
+    err = set_gate_bias(settings.tx_gate_bias);
+    if(err) return err;
+    gpio_write(PA_PWR_EN_PIN, HIGH);
+    return 0;
+}
+
 int post_transmit()
 {
     int err;
@@ -139,6 +154,7 @@ void tx_cb(struct si446x_device *dev, int err)
             return;
         }
 
+        pa_power_keepalive();
         err = send_w_retry(pkt_len, buf);
 
         if (err) {
@@ -366,7 +382,7 @@ int main(void)
                 char c = uart_getc();
                 parse_char(c);
         } else {
-//                LPM0; //enter LPM0 until an interrupt happens on the uart
+                //LPM0; //enter LPM0 until an interrupt happens on the uart
         }
     }
 }
