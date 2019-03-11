@@ -19,16 +19,21 @@
 #ifndef PINS_H_
 #define PINS_H_
 
-// Pin definitions for Rev. 1A
+// Pin definitions for Rev. 2B
 #define NSEL_PIN        0x37
-#define SDN_PIN         0x24
+#define SDN_PIN         0x45
 #define INT_PIN         0x53
 #define GPIO0           0x20
-#define GPIO1           0x44
+#define GPIO1           0x10
 #define GPIO2           0x36
 #define GPIO3           0x35
-#define TX_ACT_PIN      0x15
+#define TX_ACT_PIN      0x72
 #define PA_IMON_PIN     0x42
+#define PA_IMON_ACHAN   10      //ADC channel 10
+#define PA_VMON_PIN     0x14
+#define PA_VMON_ACHAN   4       //ADC & comparator channel 4
+#define PA_VSET_PIN     0x15
+#define PA_VSET_ACHAN   5       //ADC & comparator channel 5
 #define PA_PWR_EN_PIN   0x43
 #define PA_PGOOD_PIN    0x74
 

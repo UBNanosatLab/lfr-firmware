@@ -199,26 +199,12 @@ void init_clock()
 
     CSCTL0 = CSKEY;                                         // Enable Access to CS Registers
 
-    // For 16 MHz external xtal
-
-    PJSEL0 |= BIT6 | BIT7;                                  // Set up external high freq xtal pins
+    // For 8 MHz operation on DCO
 
     CSCTL0_H = CSKEY_H;                                     // Unlock CS registers
-    CSCTL1 = DCOFSEL_4 | DCORSEL;                           // Set DCO to 16MHz
-    CSCTL2 = SELA__VLOCLK | SELS__DCOCLK | SELM__DCOCLK;
-    CSCTL3 = DIVA__1 | DIVS__2 | DIVM__2;                   // MCLK, SMCLK 8MHz (HFXT / 2)
-    CSCTL4 = HFFREQ_1 | HFXTDRIVE_3 | HFXTOFF | LFXTOFF;    // Set drive strength and (8, 16] MHz xtal
-    CSCTL4 &= ~(HFXTOFF);                                   // Start HFXT
-    CSCTL5 &= ~(HFXTOFFG | LFXTOFFG);                       // Clear fault flags
-
-    do                                                      // Wait for HFXT to stabilize
-    {
-        CSCTL5 &= ~(HFXTOFFG);                              // Clear HFXT fault flag
-        SFRIFG1 &= ~OFIFG;
-    } while (SFRIFG1 & OFIFG);                              // Test oscillator fault flag
-
-
-    CSCTL2 = SELA__VLOCLK | SELS__HFXTCLK | SELM__HFXTCLK;  // jump to HFXT
+    CSCTL1 = DCOFSEL_6 ;                                    // Set DCO to 8MHz
+    CSCTL2 = SELA__VLOCLK | SELS__DCOCLK | SELM__DCOCLK;    // ACLK from VLO, MCLK and SMCLK from DCO
+    CSCTL3 = DIVA__1 | DIVS__1 | DIVM__1;                   // MCLK, SMCLK 8MHz (DCO/1)
 
     CSCTL0_H = 0;                                           // Lock CS registers
 }
@@ -255,7 +241,7 @@ void wdt_feed(){
 }
 
 void mcu_reset(){
-    WDTCTL = 0;
+    PMMCTL0 |= PMMSWBOR;
 }
 
 /** @brief Initialize internal I2C bus
