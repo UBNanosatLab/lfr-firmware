@@ -36,6 +36,9 @@
 #define PA_VSET_ACHAN   5       //ADC & comparator channel 5
 #define PA_PWR_EN_PIN   0x43
 #define PA_PGOOD_PIN    0x74
+#define DAC_nPWR_PIN    0x73
+#define SDA_PIN         0x70
+#define SCL_PIN         0x71
 
 #define GATE_CHAN   0
 #define TCXO_CHAN   1

@@ -63,6 +63,9 @@ int pre_transmit_no_delay()
     if(err) return err;
     err = set_gate_bias(settings.tx_gate_bias);
     if(err) return err;
+    //VGG DRIVE FIX TEST:
+    gpio_write(TX_ACT_PIN, HIGH);
+    gpio_config(TX_ACT_PIN, OUTPUT);
     return 0;
 }
 
@@ -79,6 +82,7 @@ int pa_power_keepalive(){
     //Pulse the PA_PWR_EN pin low to recharge the RC filter cap
     int err;
     //cut the drain current by killing the gate bias
+    gpio_config(TX_ACT_PIN, INPUT);
     err = set_gate_bias(0);
     if(err) return err;
     gpio_write(PA_PWR_EN_PIN, LOW);
@@ -87,6 +91,7 @@ int pa_power_keepalive(){
     err = set_gate_bias(settings.tx_gate_bias);
     if(err) return err;
     gpio_write(PA_PWR_EN_PIN, HIGH);
+    gpio_config(TX_ACT_PIN, OUTPUT);
     return 0;
 }
 
@@ -94,6 +99,8 @@ int post_transmit()
 {
     int err;
     gpio_write(PA_PWR_EN_PIN, LOW);
+    //VGG DRIVE FIX TEST:
+    gpio_config(TX_ACT_PIN, INPUT);
     err = set_gate_bias(0);
     if(err) return err;
     err = set_drain_voltage(0);
@@ -328,6 +335,18 @@ int main(void)
     gpio_write(TX_ACT_PIN, LOW);
     gpio_config(PA_PWR_EN_PIN, OUTPUT);
     gpio_write(PA_PWR_EN_PIN, LOW);
+
+    //Make sure the DAC has been reset
+    gpio_config(DAC_nPWR_PIN, OUTPUT);
+    gpio_write(DAC_nPWR_PIN, HIGH);
+    gpio_config(SDA_PIN, OUTPUT);   //Drive I2C pins low to discharge the cap quickly
+    gpio_config(SCL_PIN, OUTPUT);
+    gpio_write(SDA_PIN, LOW);
+    gpio_write(SCL_PIN, LOW);
+    delay_micros(10000); //wait for the 3V3 DAC cap to discharge fully
+    gpio_config(SDA_PIN, INPUT);
+    gpio_config(SCL_PIN, INPUT);
+    gpio_write(DAC_nPWR_PIN, LOW); //turn the DAC back on
 
     //Power-on tests
     printf("LFR Starting up...\n");
