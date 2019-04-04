@@ -249,8 +249,7 @@ void mcu_init()
     TA1CTL = TASSEL__ACLK | TACLR;          // ACLK
 
     // 16 sec w/ 32.768 kHz ACLK
-    // TODO: Re-enable
-//     WDTCTL = WDTPW | WDTSSEL__ACLK | WDTCNTCL | WDTIS__512K;
+    WDTCTL = WDTPW | WDTSSEL__ACLK | WDTCNTCL | WDTIS__512K;
 
     __enable_interrupt();
 }
