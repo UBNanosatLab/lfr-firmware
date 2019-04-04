@@ -153,9 +153,14 @@ void bc_uart_init()
     // Baud Rate calculation
     // Table 30-5
     // 115200
-    UCA1BRW = 4;
+    //UCA1BRW = 4;
     //                    UCBRFx   UCBRSx
-    UCA1MCTLW = UCOS16 | UCBRF_5 | 0x5500;
+    //UCA1MCTLW = UCOS16 | UCBRF_5 | 0x5500;
+
+    //Using BCUART input for GPS, need 9600 baud - UCOS=1, UCBRW = 52d, UCBRF=1, UCBRS=0x49
+    UCA1BRW = 52;
+    //                    UCBRFx   UCBRSx
+    UCA1MCTLW = UCOS16 | UCBRF_1 | 0x4900;
 
     UCA1CTLW0 &= ~UCSWRST;                  // Initialize eUSCI
 }

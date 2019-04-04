@@ -29,6 +29,7 @@
 #include "cmd_parser.h"
 #include "settings.h"
 #include "pkt_buf.h"
+#include <string.h>
 
 // Backing buffer for tx_queue
 uint8_t __attribute__((persistent)) tx_backing_buf[16384] = {0};
@@ -258,7 +259,9 @@ int config_si446x()
         return err;
     }
 
-    err = si446x_set_tx_pwr(&dev, 0x14);
+    //err = si446x_set_tx_pwr(&dev, 0x14);
+    //0x28 gets me about 13.8dBm out of the Si4463 board with the non-SiLabs match
+    err = si446x_set_tx_pwr(&dev, 0x28);
     if (err) {
         return err;
     }
@@ -296,6 +299,68 @@ int reset_si446x()
 
     return ESUCCESS;
 
+}
+
+unsigned char from_hex(char c){
+    if(c >= '0' && c <= '9')
+        c -= '0';
+    else if(c >= 'A' && c <= 'F')
+            c -= 'A' - 0x0a;
+    else if(c >= 'a' && c <= 'f')
+            c -= 'a' - 0x0a;
+    return c;
+}
+
+void gps_track(){
+    static char c;
+    static const char gpgga[] = "GPGGA";
+    static unsigned int checksum=0;
+    static unsigned int expected=0;
+    static unsigned char i=0;
+    static unsigned char digit=0;
+    static char buf[80];
+    static enum gps_state {WAIT, CONTENT, CHECKSUM} state = WAIT;
+    if(UCA1IFG & UCRXIFG){
+        c = UCA1RXBUF;
+        switch(state){
+        case WAIT:
+            if(c == '$'){
+                state = CONTENT;
+                i=0;
+                expected = 0;
+            }
+            break;
+        case CONTENT:
+            if(c == '*'){
+                state = CHECKSUM;
+            } else {
+                buf[i++] = c;
+                expected ^= c;
+                if(i == sizeof(gpgga)-1 && strncmp(buf, gpgga, i) != 0){ //if the sentence is NOT GPGGA, forget it (in strncmp land, 0 means equal!)
+                    state = WAIT;
+                }
+            }
+            break;
+        case CHECKSUM:
+            if(digit == 0){
+                checksum = from_hex(c) << 4;
+                digit++;
+            } else {
+                digit=0;
+                state = WAIT;
+
+                checksum += from_hex(c);
+                if((checksum == expected) && !(sys_stat & FLAG_TXBUSY)){ //checksum fail or busy, drop this and wait for a good sentence
+                    //good checksum, downlink that sentence
+                    send_w_retry(i, (uint8_t*)buf);
+                    //pkt_buf_enqueue(&tx_queue, i, (uint8_t*)buf);
+                }
+            }
+            break;
+        default:
+            break;
+        }
+    }
 }
 
 int main(void)
@@ -367,6 +432,7 @@ int main(void)
                 parse_char(c);
         } else {
 //                LPM0; //enter LPM0 until an interrupt happens on the uart
+            gps_track();
         }
     }
 }
