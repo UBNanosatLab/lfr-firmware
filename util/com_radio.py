@@ -152,7 +152,7 @@ class Radio:
         if cmd  == Command.ERROR.value | Command.REPLY.value:
             err = RadioException(pay[0])
             raise err
-        elif Command.RESET.value | Command.REPLY.value:
+        elif cmd == Command.RESET.value | Command.REPLY.value:
             return
         else:
             raise Exception('Unexpected response: ' + str((hex(flags), hex(cmd), pay)))
@@ -164,7 +164,7 @@ class Radio:
         if cmd  == Command.ERROR.value | Command.REPLY.value:
             err = RadioException(pay[0])
             raise err
-        elif Command.NOP.value | Command.REPLY.value:
+        elif cmd == Command.NOP.value | Command.REPLY.value:
             return
         else:
             raise Exception('Unexpected response: ' + str((hex(flags), hex(cmd), pay)))
@@ -176,7 +176,7 @@ class Radio:
         if cmd  == Command.ERROR.value | Command.REPLY.value:
             err = RadioException(pay[0])
             raise err
-        elif Command.TX_PSR.value | Command.REPLY.value:
+        elif cmd == Command.TX_PSR.value | Command.REPLY.value:
             return
         else:
             raise Exception('Unexpected response: ' + str((hex(flags), hex(cmd), pay)))
@@ -188,7 +188,7 @@ class Radio:
         if cmd  == Command.ERROR.value | Command.REPLY.value:
             err = RadioException(pay[0])
             raise err
-        elif Command.TX_ABORT.value | Command.REPLY.value:
+        elif cmd == Command.TX_ABORT.value | Command.REPLY.value:
             return
         else:
             raise Exception('Unexpected response: ' + str((hex(flags), hex(cmd), pay)))
@@ -200,7 +200,7 @@ class Radio:
         if cmd  == Command.ERROR.value | Command.REPLY.value:
             err = RadioException(pay[0])
             raise err
-        elif Command.SET_FREQ.value | Command.REPLY.value:
+        elif cmd == Command.SET_FREQ.value | Command.REPLY.value:
             return
         else:
             raise Exception('Unexpected response: ' + str((hex(flags), hex(cmd), pay)))
@@ -212,7 +212,7 @@ class Radio:
         if cmd  == Command.ERROR.value | Command.REPLY.value:
             err = RadioException(pay[0])
             raise err
-        elif Command.SET_TXPWR.value | Command.REPLY.value:
+        elif cmd == Command.SET_TXPWR.value | Command.REPLY.value:
             return
         else:
             raise Exception('Unexpected response: ' + str((hex(flags), hex(cmd), pay)))
@@ -229,7 +229,7 @@ class Radio:
             else:
                 raise err
 
-        elif Command.TXDATA.value | Command.REPLY.value:
+        elif cmd == Command.TXDATA.value | Command.REPLY.value:
             return
         else:
             raise Exception('Unexpected response: ' + str((hex(flags), hex(cmd), pay)))
@@ -239,7 +239,7 @@ class Radio:
 
         if cmd  == Command.ERROR.value | Command.REPLY.value:
             raise RadioException(pay[0])
-        elif Command.RXDATA.value | Command.REPLY.value:
+        elif cmd == Command.RXDATA.value | Command.REPLY.value:
             return pay.decode("utf-8")
         else:
             raise Exception('Unexpected response: ' + str((hex(flags), hex(cmd), pay)))
@@ -344,7 +344,7 @@ class Radio:
             err = RadioException(pay[0])
             raise err
 
-        elif Command.SET_CFG.value | Command.REPLY.value:
+        elif cmd == Command.SET_CFG.value | Command.REPLY.value:
             return
         else:
             raise Exception('Unexpected response: ' + str((hex(flags), hex(cmd), pay)))
@@ -359,7 +359,7 @@ class Radio:
             err = RadioException(pay[0])
             raise err
 
-        elif Command.GET_CFG.value | Command.REPLY.value:
+        elif cmd == Command.GET_CFG.value | Command.REPLY.value:
             return
         else:
             raise Exception('Unexpected response: ' + str((hex(flags), hex(cmd), pay)))
@@ -373,7 +373,7 @@ class Radio:
             err = RadioException(pay[0])
             raise err
 
-        elif Command.GET_CFG.value | Command.REPLY.value:
+        elif cmd == Command.GET_CFG.value | Command.REPLY.value:
             return
         else:
             raise Exception('Unexpected response: ' + str((hex(flags), hex(cmd), pay)))
