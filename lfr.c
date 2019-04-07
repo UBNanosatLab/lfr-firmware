@@ -30,6 +30,7 @@
 #include "settings.h"
 #include "pkt_buf.h"
 #include <string.h>
+#include "cmd_handler.h"
 
 // Backing buffer for tx_queue
 uint8_t __attribute__((persistent)) tx_backing_buf[16384] = {0};
@@ -350,9 +351,10 @@ void gps_track(){
                 state = WAIT;
 
                 checksum += from_hex(c);
-                if((checksum == expected) && !(sys_stat & FLAG_TXBUSY)){ //checksum fail or busy, drop this and wait for a good sentence
+                if((checksum == expected) && (pkt_buf_depth(&tx_queue) == 0)){ //checksum fail or busy, drop this and wait for a good sentence
                     //good checksum, downlink that sentence
-                    send_w_retry(i, (uint8_t*)buf);
+                    //send_w_retry(i, (uint8_t*)buf);
+                    cmd_tx_data(i, (uint8_t*)buf);
                     //pkt_buf_enqueue(&tx_queue, i, (uint8_t*)buf);
                 }
             }
