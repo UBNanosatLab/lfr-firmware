@@ -319,7 +319,7 @@ void gps_track(){
     static unsigned int expected=0;
     static unsigned char i=0;
     static unsigned char digit=0;
-    static char buf[80];
+    static char buf[90];
     static enum gps_state {WAIT, CONTENT, CHECKSUM} state = WAIT;
     if(UCA1IFG & UCRXIFG){
         c = UCA1RXBUF;
@@ -340,6 +340,9 @@ void gps_track(){
                 if(i == sizeof(gpgga)-1 && strncmp(buf, gpgga, i) != 0){ //if the sentence is NOT GPGGA, forget it (in strncmp land, 0 means equal!)
                     state = WAIT;
                 }
+            }
+            if(i > 82){ //must have missed something in there, go back to waiting for a new sentence
+                state = WAIT;
             }
             break;
         case CHECKSUM:
