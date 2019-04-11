@@ -31,6 +31,8 @@
 #define PA_IMON_PIN     0x42
 #define PA_PWR_EN_PIN   0x43
 #define PA_PGOOD_PIN    0x74
+#define EXT_IO0         0x40
+#define EXT_IO1         0x41
 
 #define GATE_CHAN   0
 #define TCXO_CHAN   1
