@@ -18,18 +18,15 @@
 
 #include "cmd_parser.h"
 #include "cmd_handler.h"
-//#define USE_PRINTF
-#ifdef USE_PRINTF
-#include <stdio.h>
-#endif
 
 #include "error.h"
+#include "lfr.h"
 
 void command_handler(uint8_t cmd, uint8_t len, uint8_t* payload);
 
- bool validate_cmd(uint8_t cmd);
- bool validate_length(uint8_t cmd, uint8_t len);
- uint16_t fletcher(uint16_t old_checksum, uint8_t c);
+bool validate_cmd(uint8_t cmd);
+bool validate_length(uint8_t cmd, uint8_t len);
+uint16_t fletcher(uint16_t old_checksum, uint8_t c);
 
 
 /**
@@ -234,39 +231,61 @@ void command_handler(uint8_t cmd, uint8_t len, uint8_t* payload) {
     }
 }
 
-void reply_error(uint8_t code)
+// Place to hold the current command reply
+uint8_t reply_command = CMD_INTERNALERR;
+uint8_t reply_buffer[255];
+uint8_t reply_length = 0;
+
+// Always goes to flight computer interface
+void internal_error(uint8_t code)
 {
-    reply_putc(SYNCWORD_H);
-    reply_putc(SYNCWORD_L);
+    host_reply_putc(SYNCWORD_H);
+    host_reply_putc(SYNCWORD_L);
     uint16_t chksum = 0;
-    reply_putc(CMD_ERR);
-    chksum = fletcher(chksum, CMD_ERR);
-    reply_putc(1);
+    host_reply_putc(CMD_INTERNALERR);
+    chksum = fletcher(chksum, CMD_INTERNALERR);
+    host_reply_putc(1);
     chksum = fletcher(chksum, 1);
-    reply_putc(code);
+    host_reply_putc(code);
     chksum = fletcher(chksum, code);
-    reply_putc((char) (chksum >> 8));
-    reply_putc((char) chksum);
+    host_reply_putc((char) (chksum >> 8));
+    host_reply_putc((char) chksum);
 }
 
-void reply(uint8_t cmd, int len, uint8_t *payload)
+void send_reply_to_host()
 {
-    cmd |= 0x80; // Set highest bit in reply
-    reply_putc(SYNCWORD_H);
-    reply_putc(SYNCWORD_L);
+    host_reply_putc(SYNCWORD_H);
+    host_reply_putc(SYNCWORD_L);
     uint16_t chksum = 0;
-    reply_putc(cmd);
-    chksum = fletcher(chksum, cmd);
+    host_reply_putc(reply_command);
+    chksum = fletcher(chksum, reply_command);
 
-    reply_putc(len);
-    chksum = fletcher(chksum, len);
+    host_reply_putc(reply_length);
+    chksum = fletcher(chksum, reply_length);
 
+    uint8_t *payload = reply_buffer;
+    int len = reply_length;
     for (; len > 0; len--) {
-        reply_putc(*payload);
+        host_reply_putc(*payload);
         chksum = fletcher(chksum, *payload);
         payload++;
     }
 
-    reply_putc((char) (chksum >> 8));
-    reply_putc((char) chksum);
+    host_reply_putc((char) (chksum >> 8));
+    host_reply_putc((char) chksum);
+}
+
+
+void reply_cmd_error(uint8_t code)
+{
+    reply_command = (CMD_REPLY | CMD_REPLYERR);
+    reply_length = 1;
+    reply_buffer[0] = code;
+}
+
+void reply(uint8_t cmd, int len, uint8_t *payload)
+{
+    reply_command = (CMD_REPLY | cmd);
+    reply_length = len;
+    memcpy(reply_buffer, payload, len);
 }

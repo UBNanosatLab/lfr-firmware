@@ -115,7 +115,7 @@ int send_w_retry(int len, uint8_t *buf)
 void tx_cb(struct si446x_device *dev, int err)
 {
     if (err) {
-        reply_error((uint8_t) -err);
+        internal_error((uint8_t) -err);
     }
 
     wdt_feed();
@@ -125,7 +125,7 @@ void tx_cb(struct si446x_device *dev, int err)
         err = pkt_buf_dequeue(&tx_queue, &pkt_len, buf);
 
         if (err) {
-            reply_error((uint8_t) -err);
+            internal_error((uint8_t) -err);
             post_transmit();
             set_status(STATUS_TXBUSY, false);
             si446x_recv_async(dev, 255, buf, rx_cb);
@@ -135,7 +135,7 @@ void tx_cb(struct si446x_device *dev, int err)
         err = send_w_retry(pkt_len, buf);
 
         if (err) {
-            reply_error((uint8_t) -err);
+            internal_error((uint8_t) -err);
             post_transmit();
             set_status(STATUS_TXBUSY, false);
             si446x_recv_async(dev, 255, buf, rx_cb);
@@ -157,7 +157,7 @@ void rx_cb(struct si446x_device *dev, int err, int len, uint8_t *data)
 
     if (err) {
         set_status(STATUS_TXBUSY, false);
-        reply_error((uint8_t) -err);
+        internal_error((uint8_t) -err);
         si446x_recv_async(dev, 255, buf, rx_cb);
         return;
     }
@@ -354,7 +354,7 @@ int main(void)
                 si446x_reinit(&dev);
                 config_si446x();
                 si446x_recv_async(&dev, 255, buf, rx_cb);
-                reply_error(-err);
+                internal_error(-err);
             }
         } else if(uart_available()) {
                 char c = uart_getc();

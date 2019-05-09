@@ -28,24 +28,40 @@
 #define SYNCWORD_L 0xef
 
 /* commands */
-#define CMD_NOP 0
-#define CMD_RESET 1
-#define CMD_TXDATA 2
-#define CMD_READ_TXPWR 3
-#define CMD_SET_TXPWR 4
-#define CMD_SET_FREQ 5
-#define CMD_TX_PSR 6
-#define CMD_TX_ABORT 7
-#define CMD_GET_CFG 8
-#define CMD_SET_CFG 9
-#define CMD_SAVE_CFG 10
-#define CMD_CFG_DEFAULT 11
-#define CMD_GET_QUEUE_DEPTH 12
+/* System Group */
+#define CMD_NOP                 0x00
+#define CMD_RESET               0x01
+//#define CMD_UPTIME              0x02
 
-/* not really a command, only used in spontaneous reports */
-#define CMD_RXDATA 16
+/* Data Group */
+#define CMD_TXDATA              0x10
+#define CMD_RXDATA              0x11
+#define CMD_TX_ABORT            0x12
+#define CMD_TX_PSR              0x13
 
-#define CMD_ERR 0xFF
+/* Configuration Group */
+#define CMD_GET_CFG             0x20
+#define CMD_SET_CFG             0x21
+#define CMD_SAVE_CFG            0x22
+#define CMD_CFG_DEFAULT         0x23
+#define CMD_SET_FREQ            0x24
+#define CMD_READ_TXPWR          0x25
+#define CMD_SET_TXPWR           0x26
+
+/* Status Group */
+//#define CMD_GET_STATUS          0x30
+//#define CMD_CLEAR_STATUS        0x31
+#define CMD_GET_QUEUE_DEPTH     0x32
+
+/* Peripheral Group */
+#define CMD_GPIO_WRITE          0x40
+
+/* Error / Internal Use Group */
+#define CMD_INTERNALERR         0x7E
+#define CMD_REPLYERR            0x7F
+
+/* Reply bit */
+#define CMD_REPLY               0x80
 
 
 #ifdef __cplusplus
@@ -54,7 +70,8 @@ extern "C" {
 
 void parse_char(uint8_t c);
 
-void reply_error(uint8_t code);
+void internal_error(uint8_t code);
+void reply_cmd_error(uint8_t code);
 void reply(uint8_t cmd, int len, uint8_t *payload);
 
 #ifdef __cplusplus
