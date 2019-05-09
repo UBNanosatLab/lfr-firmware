@@ -144,14 +144,11 @@ class Radio:
                     self.state = ParseState.SYNC_L
             elif self.state == ParseState.SYNC_L:
                 if c == SYNCWORD_L:
-                    self.state = ParseState.FLAGS
+                    self.state = ParseState.CMD
                 elif c == SYNCWORD_H:
                     self.state = ParseState.SYNC_L
                 else:
                     self.state = ParseState.SYNC_H
-            elif self.state == ParseState.FLAGS:
-                flags = c
-                self.state = ParseState.CMD
             elif self.state == ParseState.CMD:
                 cmd = c
                 self.state = ParseState.PAYLOAD_LEN
@@ -186,7 +183,7 @@ class Radio:
                 self.state = ParseState.SYNC_H
                 break
 
-        return (flags, cmd, payload)
+        return (0, cmd, payload)
 
     def get_cfg(self):
         pkt = chr(Command.GET_CFG.value)
