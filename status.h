@@ -16,49 +16,34 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef _CMD_PARSER_H
-#define _CMD_PARSER_H
+#ifndef STATUS_H
+#define STATUS_H
 
-#include <stdint.h>
 #include <stdbool.h>
-#define MAX_PAYLOAD_LEN 255
+#include <stdint.h>
 
-/* sync word */
-#define SYNCWORD_H 0xbe
-#define SYNCWORD_L 0xef
+// TODO: Mostly unimplemented
 
-/* commands */
-#define CMD_NOP 0
-#define CMD_RESET 1
-#define CMD_TXDATA 2
-#define CMD_READ_TXPWR 3
-#define CMD_SET_TXPWR 4
-#define CMD_SET_FREQ 5
-#define CMD_TX_PSR 6
-#define CMD_TX_ABORT 7
-#define CMD_GET_CFG 8
-#define CMD_SET_CFG 9
-#define CMD_SAVE_CFG 10
-#define CMD_CFG_DEFAULT 11
-#define CMD_GET_QUEUE_DEPTH 12
+#define STATUS_RESET            0
+//#define STATUS_CMDREPLY         1
+//#define STATUS_CMDERR           2
 
-/* not really a command, only used in spontaneous reports */
-#define CMD_RXDATA 16
+//#define STATUS_INTERNALERR      3
+//#define STATUS_RFICBUG          4
+//#define STATUS_CRCMISS          5
+//#define STATUS_PATIMEOUT        6
+//#define STATUS_PAOVERCUR        7
 
-#define CMD_ERR 0xFF
+#define STATUS_TXBUSY           8
+//#define STATUS_TXFULL           9
+//#define STATUS_TXEMPTY          10
+//#define STATUS_RXBUSY           11
+//#define STATUS_RXFULL           12
+//#define STATUS_RXNOTEMPTY       13
 
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-void parse_char(uint8_t c);
-
-void reply_error(uint8_t code);
-void reply(uint8_t cmd, int len, uint8_t *payload);
-
-#ifdef __cplusplus
-}
-#endif
+void set_status(uint8_t key, bool val);
+bool get_status(uint8_t key);
+uint32_t get_all_status();
 
 #endif

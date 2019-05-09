@@ -28,10 +28,10 @@
 #include "cmd_parser.h"
 #include "msp430_uart.h"
 #include "settings.h"
+#include "status.h"
 
 void cmd_nop() {
-    set_cmd_flag(FLAG_GOODCMD);
-    reply(sys_stat, CMD_NOP, 0, NULL);
+    reply(CMD_NOP, 0, NULL);
 }
 
 void cmd_reset() {
@@ -40,45 +40,42 @@ void cmd_reset() {
 
 void cmd_set_txpwr(uint16_t pwr) {
     settings.tx_gate_bias = pwr;
-    set_cmd_flag(FLAG_GOODCMD);
-    reply(sys_stat, CMD_SET_TXPWR, 0, NULL);
+    reply(CMD_SET_TXPWR, 0, NULL);
 }
 
 void cmd_get_txpwr() {
     uint8_t resp[] = {(uint8_t)(settings.tx_gate_bias >> 8), (uint8_t)(settings.tx_gate_bias & 0xFF)};
-    set_cmd_flag(FLAG_GOODCMD);
-    reply(sys_stat, CMD_READ_TXPWR, sizeof(resp), resp);
+    reply(CMD_READ_TXPWR, sizeof(resp), resp);
 }
 
 void cmd_tx_data(int len, uint8_t *data) {
-    int attempts;
     int err;
 
     err = pkt_buf_enqueue(&tx_queue, len, data);
 
     if (err) {
-        reply_error(sys_stat, (uint8_t) -err);
+        reply_error((uint8_t) -err);
     } else {
-        if (!(sys_stat & FLAG_TXBUSY)) {
-            sys_stat |= FLAG_TXBUSY;
+        if (!get_status(STATUS_TXBUSY)) {
+            set_status(STATUS_TXBUSY, true);
             pre_transmit();
 
             uint16_t pkt_len = MAX_PAYLOAD_LEN;
-            err = pkt_buf_dequeue(&tx_queue, &pkt_len, buf);
+            err = pkt_buf_dequeue(&tx_queue, (int*)&pkt_len, buf);
 
             if (err) {
-                reply_error(sys_stat, (uint8_t) -err);
+                reply_error((uint8_t) -err);
             }
 
             err = send_w_retry(pkt_len, buf);
 
             if (err) {
-                reply_error(sys_stat, (uint8_t) -err);
+                reply_error((uint8_t) -err);
             } else {
-                reply(sys_stat, CMD_TXDATA, 0, NULL);
+                reply(CMD_TXDATA, 0, NULL);
             }
         } else {
-            reply(sys_stat, CMD_TXDATA, 0, NULL);
+            reply(CMD_TXDATA, 0, NULL);
         }
     }
 }
@@ -86,7 +83,7 @@ void cmd_tx_data(int len, uint8_t *data) {
 void cmd_get_queue_depth() {
     uint16_t depth = pkt_buf_depth(&tx_queue);
     uint8_t data[] = {depth >> 8, depth & 0xFF};
-    reply(sys_stat, CMD_GET_QUEUE_DEPTH, sizeof(data), data);
+    reply(CMD_GET_QUEUE_DEPTH, sizeof(data), data);
 }
 
 void cmd_set_freq(uint32_t freq) {
@@ -94,11 +91,9 @@ void cmd_set_freq(uint32_t freq) {
     int err = set_frequency(freq);
 
     if (err) {
-        // Halt and catch fire
-        reply_error(sys_stat, (uint8_t) -err);
+        reply_error((uint8_t) -err);
     } else {
-        set_cmd_flag(FLAG_GOODCMD);
-        reply(sys_stat, CMD_SET_FREQ, 0, NULL);
+        reply(CMD_SET_FREQ, 0, NULL);
     }
 }
 
@@ -110,22 +105,21 @@ void cmd_abort_tx()
     err = post_transmit();
 
     if (err) {
-        reply_error(sys_stat, (uint8_t) -err);
+        reply_error((uint8_t) -err);
         return;
     }
 
     err = si446x_abort_tx(&dev);
     if (err) {
-        reply_error(sys_stat, (uint8_t) -err);
+        reply_error((uint8_t) -err);
         return;
     }
 
     err = si446x_recv_async(&dev, 255, buf, rx_cb);
     if (err) {
-        reply_error(sys_stat, (uint8_t) -err);
+        reply_error((uint8_t) -err);
     } else {
-        set_cmd_flag(FLAG_GOODCMD);
-        reply(sys_stat, CMD_TX_PSR, 0, NULL);
+        reply(CMD_TX_ABORT, 0, NULL);
     }
 }
 
@@ -145,13 +139,13 @@ void cmd_tx_psr()
     }
 
     if (err) {
-        reply_error(sys_stat, (uint8_t) -err);
+        reply_error((uint8_t) -err);
         return;
     }
 
     err = pre_transmit();
     if (err) {
-        reply_error(sys_stat, (uint8_t) -err);
+        reply_error((uint8_t) -err);
         return;
     }
 
@@ -162,22 +156,21 @@ void cmd_tx_psr()
 
             err = reset_si446x();
             if (err) {
-                reply_error(sys_stat, (uint8_t) -err);
+                reply_error((uint8_t) -err);
                 return;
             }
 
             // Retry
 
         } else if (err) {
-            reply_error(sys_stat, (uint8_t) -err);
+            reply_error((uint8_t) -err);
         } else {
-            set_cmd_flag(FLAG_GOODCMD);
-            reply(sys_stat, CMD_TX_PSR, 0, NULL);
+            reply(CMD_TX_PSR, 0, NULL);
         }
     }
 
     // Give up
-    reply_error(sys_stat, (uint8_t) ETIMEOUT);
+    reply_error((uint8_t) ETIMEOUT);
 }
 
 void cmd_set_cfg(int len, uint8_t *data)
@@ -231,10 +224,9 @@ void cmd_set_cfg(int len, uint8_t *data)
     int err = reload_config();
 
     if (err) {
-        reply_error(sys_stat, (uint8_t) -err);
+        reply_error((uint8_t) -err);
     } else {
-        set_cmd_flag(FLAG_GOODCMD);
-        reply(sys_stat, CMD_SET_CFG, 0, NULL);
+        reply(CMD_SET_CFG, 0, NULL);
     }
 
 }
@@ -279,8 +271,7 @@ void cmd_get_cfg()
                     settings.callsign[7]
     };
 
-    set_cmd_flag(FLAG_GOODCMD);
-    reply(sys_stat, CMD_GET_CFG, sizeof(data), data);
+    reply(CMD_GET_CFG, sizeof(data), data);
 }
 
 void cmd_save_cfg()
@@ -288,10 +279,9 @@ void cmd_save_cfg()
     int err;
     err = settings_save();
     if (err) {
-        reply_error(sys_stat, (uint8_t) -err);
+        reply_error((uint8_t) -err);
     } else {
-        set_cmd_flag(FLAG_GOODCMD);
-        reply(sys_stat, CMD_SAVE_CFG, 0, NULL);
+        reply(CMD_SAVE_CFG, 0, NULL);
     }
 }
 
@@ -300,16 +290,15 @@ void cmd_cfg_default()
     int err;
     err = settings_load_default();
     if (err) {
-        reply_error(sys_stat, (uint8_t) -err);
+        reply_error((uint8_t) -err);
     } else {
         reload_config();
-        set_cmd_flag(FLAG_GOODCMD);
-        reply(sys_stat, CMD_CFG_DEFAULT, 0, NULL);
+        reply(CMD_CFG_DEFAULT, 0, NULL);
     }
 }
 
 void cmd_err(int err) {
-    reply_error(sys_stat, (uint8_t) err);
+    reply_error((uint8_t) err);
 }
 
 int reply_putc(uint8_t c) {

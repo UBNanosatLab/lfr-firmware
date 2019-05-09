@@ -234,12 +234,11 @@ void command_handler(uint8_t cmd, uint8_t len, uint8_t* payload) {
     }
 }
 
-void reply_error(uint8_t sys_stat, uint8_t code)
+void reply_error(uint8_t code)
 {
     reply_putc(SYNCWORD_H);
     reply_putc(SYNCWORD_L);
-    reply_putc(sys_stat);
-    uint16_t chksum = fletcher(0, sys_stat);
+    uint16_t chksum = 0;
     reply_putc(CMD_ERR);
     chksum = fletcher(chksum, CMD_ERR);
     reply_putc(1);
@@ -250,13 +249,12 @@ void reply_error(uint8_t sys_stat, uint8_t code)
     reply_putc((char) chksum);
 }
 
-void reply(uint8_t sys_stat, uint8_t cmd, int len, uint8_t *payload)
+void reply(uint8_t cmd, int len, uint8_t *payload)
 {
-    cmd ^= 0x80; // Flip highest bit in reply
+    cmd |= 0x80; // Set highest bit in reply
     reply_putc(SYNCWORD_H);
     reply_putc(SYNCWORD_L);
-    reply_putc(sys_stat);
-    uint16_t chksum = fletcher(0, sys_stat);
+    uint16_t chksum = 0;
     reply_putc(cmd);
     chksum = fletcher(chksum, cmd);
 

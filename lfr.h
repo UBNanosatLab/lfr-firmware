@@ -25,11 +25,9 @@
 extern struct si446x_device dev;
 extern uint8_t buf[255];
 extern volatile bool do_pong;
-extern uint8_t sys_stat;
 extern struct pkt_buf tx_queue;
 
 int reload_config();
-void set_cmd_flag(uint8_t flag);
 int pre_transmit();
 int post_transmit();
 int reset_si446x();
