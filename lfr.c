@@ -281,7 +281,8 @@ int config_si446x()
         return err;
     }
 
-    err = si446x_set_tx_pwr(&dev, 0x14);
+    //err = si446x_set_tx_pwr(&dev, 0x14);
+    err = si446x_set_tx_pwr(&dev, 0x7f);
     if (err) {
         return err;
     }
