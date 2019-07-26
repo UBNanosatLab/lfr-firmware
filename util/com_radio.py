@@ -9,7 +9,7 @@ import serial
 import struct
 import json
 
-from enum import Enum, auto
+from enum import Enum
 
 SYNCWORD_H = 0xBE
 SYNCWORD_L = 0xEF
