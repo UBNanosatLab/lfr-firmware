@@ -31,7 +31,7 @@
 #define F_SMCLK         (8000000ul)
 
 
-#define SPI_CLKDIV      (F_SMCLK / 1000000L) //0.5 MHz SPI
+#define SPI_CLKDIV      (F_SMCLK / 1000000L) //1 MHz SPI
 #define FREQ_I2C (400000ul)
 
 volatile unsigned char _i2c_tx_byte_ctr; //bytes remaining this transaction

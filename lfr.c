@@ -100,6 +100,7 @@ int send_w_retry(int len, uint8_t *buf)
             }
 
             // Retry
+            printf("Si446x BUG: Resetting...\n");
 
         } else if (err) {
             return err;
