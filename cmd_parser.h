@@ -54,7 +54,7 @@
 #define CMD_GET_QUEUE_DEPTH     0x32
 
 /* Peripheral Group */
-#define CMD_GPIO_WRITE          0x40
+//#define CMD_GPIO_WRITE          0x40
 
 /* Error / Internal Use Group */
 #define CMD_INTERNALERR         0x7E
@@ -69,7 +69,7 @@ extern "C" {
 #endif
 
 void parse_char(uint8_t c);
-
+void send_reply_to_host();
 void internal_error(uint8_t code);
 void reply_cmd_error(uint8_t code);
 void reply(uint8_t cmd, int len, uint8_t *payload);

@@ -164,6 +164,7 @@ int fputc(int _c, register FILE *_fp)
 {
   while(!(UCA1IFG & UCTXIFG));
   UCA1TXBUF = (unsigned char) _c;
+  while(!(UCA1IFG & UCTXIFG));
 
   return((unsigned char)_c);
 }
@@ -176,10 +177,10 @@ int fputs(const char *_ptr, register FILE *_fp)
 
   for(i=0 ; i<len ; i++)
   {
-    while(!(UCA0IFG & UCTXIFG));
+    while(!(UCA1IFG & UCTXIFG));
     UCA1TXBUF = (unsigned char) _ptr[i];
   }
-
+  while(!(UCA1IFG & UCTXIFG));
   return len;
 }
 

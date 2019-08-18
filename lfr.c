@@ -311,6 +311,7 @@ int main(void)
     printf("LFR Build: %s\n", board_info.sw_ver);
     set_status(STATUS_RESET, true);
     reply(CMD_RESET, 0, NULL);
+    send_reply_to_host();
 
     i2c_init();
     err = set_gate_bias(0x000);

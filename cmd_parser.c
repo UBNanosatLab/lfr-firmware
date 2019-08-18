@@ -130,6 +130,7 @@ void parse_char(uint8_t c) {
       next_state = S_SYNC0;
       result = R_WAIT;
       command_handler(cmd, payload_len, payload);
+      send_reply_to_host();
     case R_WAIT:
       break;
   }

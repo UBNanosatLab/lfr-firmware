@@ -375,7 +375,15 @@ class Radio:
         else:
             raise Exception('Unexpected response: ' + str((hex(cmd), pay)))
 
+def usage():
+    print('Usage: python3', sys.argv[0], '/dev/<RADIO_UART> [rx | tx n | get-cfg | load-cfg | save-cfg | default-cfg | tx-psr | tx-abort | reset]')
+
 if __name__ == '__main__':
+
+    if len(sys.argv) < 2:
+        usage()
+        exit(1)
+
     radio = Radio(sys.argv[1])
 
     if (len(sys.argv) == 2 or sys.argv[2] == 'rx'):
@@ -425,4 +433,4 @@ if __name__ == '__main__':
         radio.reset()
 
     else:
-        print('Usage: python3', sys.argv[0], '/dev/<RADIO_UART> [rx | tx n | get-cfg | load-cfg | save-cfg | default-cfg | tx-psr | tx-abort | reset]')
+        usage()
