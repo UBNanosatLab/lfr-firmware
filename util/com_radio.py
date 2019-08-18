@@ -114,6 +114,8 @@ class Radio:
         self.state = ParseState.SYNC_H
 
     def flush_serial(self):
+        self.ser.flushOutput()
+        self.ser.flushInput()
         self.ser.reset_input_buffer()
 
     def nop_flush(self, num):
@@ -356,7 +358,7 @@ class Radio:
             err = RadioException(pay[0])
             raise err
 
-        elif cmd == Command.GET_CFG.value | Command.REPLY.value:
+        elif cmd == Command.SAVE_CFG.value | Command.REPLY.value:
             return
         else:
             raise Exception('Unexpected response: ' + str((hex(cmd), pay)))
@@ -370,13 +372,16 @@ class Radio:
             err = RadioException(pay[0])
             raise err
 
-        elif cmd == Command.GET_CFG.value | Command.REPLY.value:
+        elif cmd == Command.CFG_DEFAULT.value | Command.REPLY.value:
             return
         else:
             raise Exception('Unexpected response: ' + str((hex(cmd), pay)))
 
+    def close(self):
+        self.ser.close()
+
 def usage():
-    print('Usage: python3', sys.argv[0], '/dev/<RADIO_UART> [rx | tx n | get-cfg | load-cfg | save-cfg | default-cfg | tx-psr | tx-abort | reset]')
+    print('Usage: python3', sys.argv[0], '/dev/<RADIO_UART> [rx | tx n | get-cfg | load-cfg | save-cfg | default-cfg | tx-psr | tx-abort | reset | nop]')
 
 if __name__ == '__main__':
 
@@ -430,7 +435,12 @@ if __name__ == '__main__':
     elif (sys.argv[2] == 'reset' and len(sys.argv) == 3):
         radio.nop_flush(60)
         radio.flush_serial()
+        sleep(0.1)
+        radio.flush_serial()
         radio.reset()
+
+    elif (sys.argv[2] == 'nop' and len(sys.argv) == 3):
+        radio.nop()
 
     else:
         usage()
