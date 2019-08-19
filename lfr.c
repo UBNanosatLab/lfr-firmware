@@ -184,6 +184,7 @@ void rx_cb(struct si446x_device *dev, int err, int len, uint8_t *data)
         reply(CMD_RXDATA, len, data);
     }
     set_status(STATUS_TXBUSY, false);
+    send_reply_to_host();
     si446x_recv_async(dev, 255, buf, rx_cb);
 }
 
@@ -362,7 +363,7 @@ int main(void)
                 char c = uart_getc();
                 parse_char(c);
         } else {
-//                LPM0; //enter LPM0 until an interrupt happens on the uart
+                LPM0; //enter LPM0 until an interrupt happens on the uart
         }
     }
 }
@@ -372,6 +373,7 @@ __interrupt void irq_isr()
 {
     P5IFG = 0;
     radio_irq = true;
+    LPM4_EXIT; //This clears all the LPM bits, so it will leave the chip in run mode after the ISR
 }
 
 #pragma vector=PORT2_VECTOR
@@ -411,4 +413,5 @@ __interrupt void rx_timeout_isr()
 
     si446x_rx_timeout(&dev);
     radio_irq = true;
+    LPM4_EXIT; //This clears all the LPM bits, so it will leave the chip in run mode after the ISR
 }
