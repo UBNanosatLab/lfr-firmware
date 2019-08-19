@@ -116,7 +116,30 @@ void cmd_abort_tx()
         return;
     }
 
+    err = set_modem_config(settings.modem_config);
+
+    if (err) {
+        reply_cmd_error((uint8_t) -err);
+        return;
+    }
+
+    if ((settings.flags & FLAG_MOD_MASK) == FLAG_MOD_CW) {
+        err = si446x_set_mod_type(&dev, MOD_TYPE_CW);
+    } else if ((settings.flags & FLAG_MOD_MASK) == FLAG_MOD_FSK) {
+        err = si446x_set_mod_type(&dev, MOD_TYPE_2FSK);
+    } else if ((settings.flags & FLAG_MOD_MASK) == FLAG_MOD_GFSK) {
+        err = si446x_set_mod_type(&dev, MOD_TYPE_2GFSK);
+    } else {
+        err = si446x_set_mod_type(&dev, MOD_TYPE_2GFSK);
+    }
+
+    if (err) {
+        reply_cmd_error((uint8_t) -err);
+        return;
+    }
+
     err = si446x_recv_async(&dev, 255, buf, rx_cb);
+
     if (err) {
         reply_cmd_error((uint8_t) -err);
     } else {
@@ -165,8 +188,10 @@ void cmd_tx_psr()
 
         } else if (err) {
             reply_cmd_error((uint8_t) -err);
+            return;
         } else {
             reply(CMD_TX_PSR, 0, NULL);
+            return;
         }
     }
 
