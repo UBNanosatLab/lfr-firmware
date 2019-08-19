@@ -16,23 +16,27 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef LFR_H_
-#define LFR_H_
+#include <stdbool.h>
+#include <stdint.h>
+#include "status.h"
 
-#include "pkt_buf.h"
+static uint32_t status = 0;
 
-/* Global variables */
-extern struct si446x_device dev;
-extern uint8_t buf[255];
-extern volatile bool do_pong;
-extern struct pkt_buf tx_queue;
+void set_status(uint8_t key, bool val)
+{
+    if (val) {
+        status |= (1 << key);
+    } else {
+        status &= ~(1 << key);
+    }
+}
 
-int reload_config();
-int pre_transmit();
-int post_transmit();
-int reset_si446x();
-void rx_cb(struct si446x_device *dev, int err, int len, uint8_t *data);
-void tx_cb(struct si446x_device *dev, int err);
-int send_w_retry(int len, uint8_t *buf);
+bool get_status(uint8_t key)
+{
+    return (status & (1 << key)) ? true : false;
+}
 
-#endif /* LFR_H_ */
+uint32_t get_all_status()
+{
+    return status;
+}

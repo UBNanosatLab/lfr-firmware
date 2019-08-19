@@ -29,14 +29,12 @@
 #include "cmd_parser.h"
 #include "settings.h"
 #include "pkt_buf.h"
+#include "status.h"
 
 // Backing buffer for tx_queue
 uint8_t __attribute__((persistent)) tx_backing_buf[16384] = {0};
 
 uint8_t buf[255];
-
-//status byte for command replies. Bits are [TXBUSY]:[BADCMD]:[BADCKSUM]:[GOODCMD]:[reserved for tx buffer depth 3:0]
-uint8_t sys_stat = 0;
 
 struct si446x_device dev;
 struct pkt_buf tx_queue;
@@ -47,11 +45,6 @@ volatile bool radio_irq = true;
 void tx_cb(struct si446x_device *dev, int err);
 void rx_cb(struct si446x_device *dev, int err, int len, uint8_t *data);
 int reset_si446x();
-
-void set_cmd_flag(uint8_t flag){
-    sys_stat &= ~(FLAG_GOODCMD | FLAG_INVALID | FLAG_BADSUM);
-    sys_stat |= flag;
-}
 
 int pre_transmit_no_delay()
 {
@@ -129,6 +122,7 @@ int send_w_retry(int len, uint8_t *buf)
             }
 
             // Retry
+            printf("Si446x BUG: Resetting...\n");
 
         } else if (err) {
             return err;
@@ -144,7 +138,7 @@ int send_w_retry(int len, uint8_t *buf)
 void tx_cb(struct si446x_device *dev, int err)
 {
     if (err) {
-        reply_error(sys_stat, (uint8_t) -err);
+        internal_error((uint8_t) -err);
     }
 
     wdt_feed();
@@ -154,9 +148,9 @@ void tx_cb(struct si446x_device *dev, int err)
         err = pkt_buf_dequeue(&tx_queue, &pkt_len, buf);
 
         if (err) {
-            reply_error(sys_stat, (uint8_t) -err);
+            internal_error((uint8_t) -err);
             post_transmit();
-            sys_stat &= ~(FLAG_TXBUSY);
+            set_status(STATUS_TXBUSY, false);
             si446x_recv_async(dev, 255, buf, rx_cb);
             return;
         }
@@ -165,15 +159,15 @@ void tx_cb(struct si446x_device *dev, int err)
         err = send_w_retry(pkt_len, buf);
 
         if (err) {
-            reply_error(sys_stat, (uint8_t) -err);
+            internal_error((uint8_t) -err);
             post_transmit();
-            sys_stat &= ~(FLAG_TXBUSY);
+            set_status(STATUS_TXBUSY, false);
             si446x_recv_async(dev, 255, buf, rx_cb);
             return;
         }
     } else {
         post_transmit();
-        sys_stat &= ~(FLAG_TXBUSY);
+        set_status(STATUS_TXBUSY, false);
         si446x_recv_async(dev, 255, buf, rx_cb);
     }
 }
@@ -186,8 +180,8 @@ void rx_cb(struct si446x_device *dev, int err, int len, uint8_t *data)
     TA1CTL |= TACLR;                        // Stop timer
 
     if (err) {
-        sys_stat &= ~(FLAG_TXBUSY);
-        reply_error(sys_stat, (uint8_t) -err);
+        set_status(STATUS_TXBUSY, false);
+        internal_error((uint8_t) -err);
         si446x_recv_async(dev, 255, buf, rx_cb);
         return;
     }
@@ -201,7 +195,7 @@ void rx_cb(struct si446x_device *dev, int err, int len, uint8_t *data)
             'N',
             'G',
         };
-        sys_stat |= FLAG_TXBUSY;
+        set_status(STATUS_TXBUSY, true);
         gpio_write(TX_ACT_PIN, HIGH);
         err = set_gate_bias(settings.tx_gate_bias);
         si446x_setup_tx(dev, sizeof(resp), resp, tx_cb);
@@ -210,9 +204,10 @@ void rx_cb(struct si446x_device *dev, int err, int len, uint8_t *data)
         return;
     } else {
         // Handle RX'd packet
-        reply(sys_stat, CMD_RXDATA, len, data);
+        reply(CMD_RXDATA, len, data);
     }
-    sys_stat &= ~(FLAG_TXBUSY);
+    set_status(STATUS_TXBUSY, false);
+    send_reply_to_host();
     si446x_recv_async(dev, 255, buf, rx_cb);
 }
 
@@ -352,7 +347,9 @@ int main(void)
     //Power-on tests
     printf("LFR Starting up...\n");
     printf("LFR Build: %s\n", board_info.sw_ver);
-    reply(sys_stat, CMD_RESET, 0, NULL);
+    set_status(STATUS_RESET, true);
+    reply(CMD_RESET, 0, NULL);
+    send_reply_to_host();
 
     i2c_init();
     err = set_gate_bias(0x000);
@@ -396,13 +393,13 @@ int main(void)
                 si446x_reinit(&dev);
                 config_si446x();
                 si446x_recv_async(&dev, 255, buf, rx_cb);
-                reply_error(sys_stat, -err);
+                internal_error(-err);
             }
         } else if(uart_available()) {
                 char c = uart_getc();
                 parse_char(c);
         } else {
-                //LPM0; //enter LPM0 until an interrupt happens on the uart
+                LPM0; //enter LPM0 until an interrupt happens on the uart
         }
     }
 }
@@ -412,6 +409,7 @@ __interrupt void irq_isr()
 {
     P5IFG = 0;
     radio_irq = true;
+    LPM4_EXIT; //This clears all the LPM bits, so it will leave the chip in run mode after the ISR
 }
 
 #pragma vector=PORT2_VECTOR
@@ -451,4 +449,5 @@ __interrupt void rx_timeout_isr()
 
     si446x_rx_timeout(&dev);
     radio_irq = true;
+    LPM4_EXIT; //This clears all the LPM bits, so it will leave the chip in run mode after the ISR
 }
