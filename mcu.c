@@ -31,7 +31,7 @@
 #define F_SMCLK         (8000000ul)
 
 
-#define SPI_CLKDIV      (F_SMCLK / 1000000L) //0.5 MHz SPI
+#define SPI_CLKDIV      (F_SMCLK / 2000000L) //1 MHz SPI
 #define FREQ_I2C (400000ul)
 
 volatile unsigned char _i2c_tx_byte_ctr; //bytes remaining this transaction
@@ -164,6 +164,7 @@ int fputc(int _c, register FILE *_fp)
 {
   while(!(UCA1IFG & UCTXIFG));
   UCA1TXBUF = (unsigned char) _c;
+  while(!(UCA1IFG & UCTXIFG));
 
   return((unsigned char)_c);
 }
@@ -176,10 +177,10 @@ int fputs(const char *_ptr, register FILE *_fp)
 
   for(i=0 ; i<len ; i++)
   {
-    while(!(UCA0IFG & UCTXIFG));
+    while(!(UCA1IFG & UCTXIFG));
     UCA1TXBUF = (unsigned char) _ptr[i];
   }
-
+  while(!(UCA1IFG & UCTXIFG));
   return len;
 }
 

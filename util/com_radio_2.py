@@ -12,7 +12,6 @@ SYNCWORD_L = 0xEF
 class ParseState(Enum):
     SYNC_H = 0
     SYNC_L = 1
-    FLAGS = 2
     CMD = 3
     PAYLOAD_LEN = 4
     PAYLOAD = 5
@@ -108,7 +107,7 @@ class Radio:
 
         self.ser.write(pkt)
 
-        (flags, cmd, pay) = self.recv()
+        (cmd, pay) = self.recv()
 
         if cmd  == Command.ERROR.value | Command.REPLY.value:
             err = RadioException(ord(pay[0]))
@@ -120,17 +119,17 @@ class Radio:
         elif Command.TXDATA.value | Command.REPLY.value:
             return
         else:
-            raise Exception('Unexpected response: ' + str((flags, cmd, pay)))
+            raise Exception('Unexpected response: ' + str((cmd, pay)))
 
     def rx(self):
-        (flags, cmd, pay) = self.recv()
+        (cmd, pay) = self.recv()
 
         if cmd  == Command.ERROR.value | Command.REPLY.value:
             raise RadioException(pay[0])
         elif Command.RXDATA.value | Command.REPLY.value:
             return pay
         else:
-            raise Exception('Unexpected response: ' + str((flags, cmd, pay)))
+            raise Exception('Unexpected response: ' + str((cmd, pay)))
 
     def recv(self):
 
@@ -144,14 +143,11 @@ class Radio:
                     self.state = ParseState.SYNC_L
             elif self.state == ParseState.SYNC_L:
                 if c == SYNCWORD_L:
-                    self.state = ParseState.FLAGS
+                    self.state = ParseState.CMD
                 elif c == SYNCWORD_H:
                     self.state = ParseState.SYNC_L
                 else:
                     self.state = ParseState.SYNC_H
-            elif self.state == ParseState.FLAGS:
-                flags = c
-                self.state = ParseState.CMD
             elif self.state == ParseState.CMD:
                 cmd = c
                 self.state = ParseState.PAYLOAD_LEN
@@ -161,7 +157,7 @@ class Radio:
                 if (length):
                     self.state = ParseState.PAYLOAD
                 else:
-                    chksum = compute_chksum(''.join([chr(flags), chr(cmd), chr(0)]))
+                    chksum = compute_chksum(''.join([chr(cmd), chr(0)]))
                     self.state = ParseState.CHKSUM_H
 
             elif self.state == ParseState.PAYLOAD:
@@ -169,7 +165,7 @@ class Radio:
                 length -= 1
                 self.state = ParseState.PAYLOAD
                 if (length == 0):
-                    chksum = compute_chksum(''.join([chr(flags), chr(cmd), chr(len(payload))]) + payload)
+                    chksum = compute_chksum(''.join([chr(cmd), chr(len(payload))]) + payload)
                     self.state = ParseState.CHKSUM_H
             elif self.state == ParseState.CHKSUM_H:
                 if (c == chksum >> 8):
@@ -186,7 +182,7 @@ class Radio:
                 self.state = ParseState.SYNC_H
                 break
 
-        return (flags, cmd, payload)
+        return (0, cmd, payload)
 
     def get_cfg(self):
         pkt = chr(Command.GET_CFG.value)
@@ -198,7 +194,7 @@ class Radio:
 
         self.ser.write(pkt)
 
-        (flags, cmd, pay) = self.recv()
+        (cmd, pay) = self.recv()
 
         if cmd  == Command.ERROR.value | Command.REPLY.value:
             err = RadioException(pay[0])
@@ -215,7 +211,7 @@ class Radio:
 
             return cfg
         else:
-            raise Exception('Unexpected response: ' + str((flags, cmd, pay)))
+            raise Exception('Unexpected response: ' + str((cmd, pay)))
 
     def set_cfg(self, cfg_in):
 
@@ -237,7 +233,7 @@ class Radio:
 
         self.ser.write(pkt)
 
-        (flags, cmd, pay) = self.recv()
+        (cmd, pay) = self.recv()
 
         if cmd  == Command.ERROR.value | Command.REPLY.value:
             err = RadioException(ord(pay[0]))
@@ -246,7 +242,7 @@ class Radio:
         elif Command.SET_CFG.value | Command.REPLY.value:
             return
         else:
-            raise Exception('Unexpected response: ' + str((flags, cmd, pay)))
+            raise Exception('Unexpected response: ' + str((cmd, pay)))
 
 
     def save_cfg(self):
@@ -259,7 +255,7 @@ class Radio:
 
         self.ser.write(pkt)
 
-        (flags, cmd, pay) = self.recv()
+        (cmd, pay) = self.recv()
 
         if cmd  == Command.ERROR.value | Command.REPLY.value:
             err = RadioException(ord(pay[0]))
@@ -268,7 +264,7 @@ class Radio:
         elif Command.GET_CFG.value | Command.REPLY.value:
             return
         else:
-            raise Exception('Unexpected response: ' + str((flags, cmd, pay)))
+            raise Exception('Unexpected response: ' + str((cmd, pay)))
 
     def cfg_default(self):
         pkt = chr(Command.CFG_DEFAULT.value)
@@ -280,7 +276,7 @@ class Radio:
 
         self.ser.write(pkt)
 
-        (flags, cmd, pay) = self.recv()
+        (cmd, pay) = self.recv()
 
         if cmd  == Command.ERROR.value | Command.REPLY.value:
             err = RadioException(ord(pay[0]))
@@ -289,4 +285,4 @@ class Radio:
         elif Command.GET_CFG.value | Command.REPLY.value:
             return
         else:
-            raise Exception('Unexpected response: ' + str((flags, cmd, pay)))
+            raise Exception('Unexpected response: ' + str((cmd, pay)))

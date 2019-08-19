@@ -20,10 +20,10 @@
 #define CMD_HANDLER_H
 
 /**
- * Send reply character
+ * Send reply character to the flight computer
  * @param c the character to send
  */
-int reply_putc(uint8_t c);
+int host_reply_putc(uint8_t c);
 
 /**
  * No-OPeration

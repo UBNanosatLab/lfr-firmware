@@ -17,7 +17,6 @@ SYNCWORD_L = 0xEF
 class ParseState(Enum):
     SYNC_H = 0
     SYNC_L = 1
-    FLAGS = 2
     CMD = 3
     PAYLOAD_LEN = 4
     PAYLOAD = 5
@@ -27,22 +26,23 @@ class ParseState(Enum):
 class Command(Enum):
     NOP = 0x00
     RESET = 0x01
-    TXDATA = 0x02
-    GET_TXPWR = 0x03
-    SET_TXPWR = 0x04
-    SET_FREQ = 0x05
 
-    TX_PSR = 0x06
-    TX_ABORT = 0x07
+    TXDATA = 0x10
+    RXDATA = 0x11
+    TX_ABORT = 0x12
+    TX_PSR = 0x13
 
-    GET_CFG = 0x08
-    SET_CFG = 0x09
-    SAVE_CFG = 0x0A
-    CFG_DEFAULT = 0x0B
-    CMD_GET_QUEUE_DEPTH = 0x0C
+    GET_CFG = 0x20
+    SET_CFG = 0x21
+    SAVE_CFG = 0x22
+    CFG_DEFAULT = 0x23
+    SET_FREQ = 0x24
+    GET_TXPWR = 0x25
+    SET_TXPWR = 0x26
 
-    RXDATA = 0x10
+    CMD_GET_QUEUE_DEPTH = 0x32
 
+    INTERNALERROR = 0x7E
     ERROR = 0x7F
 
     REPLY = 0x80
@@ -114,6 +114,8 @@ class Radio:
         self.state = ParseState.SYNC_H
 
     def flush_serial(self):
+        self.ser.flushOutput()
+        self.ser.flushInput()
         self.ser.reset_input_buffer()
 
     def nop_flush(self, num):
@@ -147,7 +149,7 @@ class Radio:
 
     def reset(self):
         self.send_pkt(Command.RESET)
-        (flags, cmd, pay) = self.recv()
+        (cmd, pay) = self.recv()
 
         if cmd  == Command.ERROR.value | Command.REPLY.value:
             err = RadioException(pay[0])
@@ -155,11 +157,11 @@ class Radio:
         elif cmd == Command.RESET.value | Command.REPLY.value:
             return
         else:
-            raise Exception('Unexpected response: ' + str((hex(flags), hex(cmd), pay)))
+            raise Exception('Unexpected response: ' + str((hex(cmd), pay)))
 
     def nop(self):
         self.send_pkt(Command.NOP)
-        (flags, cmd, pay) = self.recv()
+        (cmd, pay) = self.recv()
 
         if cmd  == Command.ERROR.value | Command.REPLY.value:
             err = RadioException(pay[0])
@@ -167,11 +169,11 @@ class Radio:
         elif cmd == Command.NOP.value | Command.REPLY.value:
             return
         else:
-            raise Exception('Unexpected response: ' + str((hex(flags), hex(cmd), pay)))
+            raise Exception('Unexpected response: ' + str((hex(cmd), pay)))
 
     def tx_psr(self):
         self.send_pkt(Command.TX_PSR)
-        (flags, cmd, pay) = self.recv()
+        (cmd, pay) = self.recv()
 
         if cmd  == Command.ERROR.value | Command.REPLY.value:
             err = RadioException(pay[0])
@@ -179,11 +181,11 @@ class Radio:
         elif cmd == Command.TX_PSR.value | Command.REPLY.value:
             return
         else:
-            raise Exception('Unexpected response: ' + str((hex(flags), hex(cmd), pay)))
+            raise Exception('Unexpected response: ' + str((hex(cmd), pay)))
 
     def tx_abort(self):
         self.send_pkt(Command.TX_ABORT)
-        (flags, cmd, pay) = self.recv()
+        (cmd, pay) = self.recv()
 
         if cmd  == Command.ERROR.value | Command.REPLY.value:
             err = RadioException(pay[0])
@@ -191,11 +193,11 @@ class Radio:
         elif cmd == Command.TX_ABORT.value | Command.REPLY.value:
             return
         else:
-            raise Exception('Unexpected response: ' + str((hex(flags), hex(cmd), pay)))
+            raise Exception('Unexpected response: ' + str((hex(cmd), pay)))
 
     def set_freq(self, freq):
         self.send_pkt(Command.SET_FREQ, struct.pack("!I", freq))
-        (flags, cmd, pay) = self.recv()
+        (cmd, pay) = self.recv()
 
         if cmd  == Command.ERROR.value | Command.REPLY.value:
             err = RadioException(pay[0])
@@ -203,11 +205,11 @@ class Radio:
         elif cmd == Command.SET_FREQ.value | Command.REPLY.value:
             return
         else:
-            raise Exception('Unexpected response: ' + str((hex(flags), hex(cmd), pay)))
+            raise Exception('Unexpected response: ' + str((hex(cmd), pay)))
 
     def set_txpwr(self, pwr):
         self.send_pkt(Command.SET_TXPWR, struct.pack("!H", pwr))
-        (flags, cmd, pay) = self.recv()
+        (cmd, pay) = self.recv()
 
         if cmd  == Command.ERROR.value | Command.REPLY.value:
             err = RadioException(pay[0])
@@ -215,11 +217,11 @@ class Radio:
         elif cmd == Command.SET_TXPWR.value | Command.REPLY.value:
             return
         else:
-            raise Exception('Unexpected response: ' + str((hex(flags), hex(cmd), pay)))
+            raise Exception('Unexpected response: ' + str((hex(cmd), pay)))
 
     def tx(self, data):
         self.send_pkt(Command.TXDATA, data if isinstance(data, bytes) else data.encode('utf-8'))
-        (flags, cmd, pay) = self.recv()
+        (cmd, pay) = self.recv()
 
         if cmd  == Command.ERROR.value | Command.REPLY.value:
             err = RadioException(pay[0])
@@ -232,17 +234,17 @@ class Radio:
         elif cmd == Command.TXDATA.value | Command.REPLY.value:
             return
         else:
-            raise Exception('Unexpected response: ' + str((hex(flags), hex(cmd), pay)))
+            raise Exception('Unexpected response: ' + str((hex(cmd), pay)))
 
     def rx(self):
-        (flags, cmd, pay) = self.recv()
+        (cmd, pay) = self.recv()
 
         if cmd  == Command.ERROR.value | Command.REPLY.value:
             raise RadioException(pay[0])
         elif cmd == Command.RXDATA.value | Command.REPLY.value:
             return pay.decode("utf-8")
         else:
-            raise Exception('Unexpected response: ' + str((hex(flags), hex(cmd), pay)))
+            raise Exception('Unexpected response: ' + str((hex(cmd), pay)))
 
     def recv(self):
 
@@ -256,14 +258,11 @@ class Radio:
                     self.state = ParseState.SYNC_L
             elif self.state is ParseState.SYNC_L:
                 if c == SYNCWORD_L:
-                    self.state = ParseState.FLAGS
+                    self.state = ParseState.CMD
                 elif c == SYNCWORD_H:
                     self.state = ParseState.SYNC_L
                 else:
                     self.state = ParseState.SYNC_H
-            elif self.state is ParseState.FLAGS:
-                flags = c
-                self.state = ParseState.CMD
             elif self.state is ParseState.CMD:
                 cmd = c
                 self.state = ParseState.PAYLOAD_LEN
@@ -273,7 +272,7 @@ class Radio:
                 if (length):
                     self.state = ParseState.PAYLOAD
                 else:
-                    chksum = self.checksum(bytes([flags , cmd, 0]))
+                    chksum = self.checksum(bytes([cmd, 0]))
                     self.state = ParseState.CHKSUM_H
 
             elif self.state is ParseState.PAYLOAD:
@@ -281,7 +280,7 @@ class Radio:
                 length -= 1
                 self.state = ParseState.PAYLOAD
                 if (length == 0):
-                    chksum = self.checksum(bytes([flags , cmd, len(payload)]) + payload)
+                    chksum = self.checksum(bytes([cmd, len(payload)]) + payload)
                     self.state = ParseState.CHKSUM_H
             elif self.state is ParseState.CHKSUM_H:
                 if (c == chksum >> 8):
@@ -299,12 +298,12 @@ class Radio:
                 break
 
 
-        return (flags, cmd, payload)
+        return (cmd, payload)
 
     def get_cfg(self):
         self.send_pkt(Command.GET_CFG)
 
-        (flags, cmd, pay) = self.recv()
+        (cmd, pay) = self.recv()
 
         if cmd  == (Command.ERROR.value | Command.REPLY.value):
             err = RadioException(pay[0])
@@ -322,7 +321,7 @@ class Radio:
 
             return cfg
         else:
-            raise Exception('Unexpected response: ' + str((hex(flags), hex(cmd), pay)))
+            raise Exception('Unexpected response: ' + str((hex(cmd), pay)))
 
     def set_cfg(self, cfg_in):
 
@@ -338,7 +337,7 @@ class Radio:
 
         self.send_pkt(Command.SET_CFG, data)
 
-        (flags, cmd, pay) = self.recv()
+        (cmd, pay) = self.recv()
 
         if cmd  == Command.ERROR.value | Command.REPLY.value:
             err = RadioException(pay[0])
@@ -347,38 +346,49 @@ class Radio:
         elif cmd == Command.SET_CFG.value | Command.REPLY.value:
             return
         else:
-            raise Exception('Unexpected response: ' + str((hex(flags), hex(cmd), pay)))
+            raise Exception('Unexpected response: ' + str((hex(cmd), pay)))
 
 
     def save_cfg(self):
         self.send_pkt(Command.SAVE_CFG)
 
-        (flags, cmd, pay) = self.recv()
+        (cmd, pay) = self.recv()
 
         if cmd  == Command.ERROR.value | Command.REPLY.value:
             err = RadioException(pay[0])
             raise err
 
-        elif cmd == Command.GET_CFG.value | Command.REPLY.value:
+        elif cmd == Command.SAVE_CFG.value | Command.REPLY.value:
             return
         else:
-            raise Exception('Unexpected response: ' + str((hex(flags), hex(cmd), pay)))
+            raise Exception('Unexpected response: ' + str((hex(cmd), pay)))
 
     def cfg_default(self):
         self.send_pkt(Command.CFG_DEFAULT)
 
-        (flags, cmd, pay) = self.recv()
+        (cmd, pay) = self.recv()
 
         if cmd  == Command.ERROR.value | Command.REPLY.value:
             err = RadioException(pay[0])
             raise err
 
-        elif cmd == Command.GET_CFG.value | Command.REPLY.value:
+        elif cmd == Command.CFG_DEFAULT.value | Command.REPLY.value:
             return
         else:
-            raise Exception('Unexpected response: ' + str((hex(flags), hex(cmd), pay)))
+            raise Exception('Unexpected response: ' + str((hex(cmd), pay)))
+
+    def close(self):
+        self.ser.close()
+
+def usage():
+    print('Usage: python3', sys.argv[0], '/dev/<RADIO_UART> [rx | tx n | get-cfg | load-cfg | save-cfg | default-cfg | tx-psr | tx-abort | reset | nop]')
 
 if __name__ == '__main__':
+
+    if len(sys.argv) < 2:
+        usage()
+        exit(1)
+
     radio = Radio(sys.argv[1])
 
     if (len(sys.argv) == 2 or sys.argv[2] == 'rx'):
@@ -425,7 +435,12 @@ if __name__ == '__main__':
     elif (sys.argv[2] == 'reset' and len(sys.argv) == 3):
         radio.nop_flush(60)
         radio.flush_serial()
+        sleep(0.1)
+        radio.flush_serial()
         radio.reset()
 
+    elif (sys.argv[2] == 'nop' and len(sys.argv) == 3):
+        radio.nop()
+
     else:
-        print('Usage: python3', sys.argv[0], '/dev/<RADIO_UART> [rx | tx n | get-cfg | load-cfg | save-cfg | default-cfg | tx-psr | tx-abort | reset]')
+        usage()

@@ -16,23 +16,34 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef LFR_H_
-#define LFR_H_
+#ifndef STATUS_H
+#define STATUS_H
 
-#include "pkt_buf.h"
+#include <stdbool.h>
+#include <stdint.h>
 
-/* Global variables */
-extern struct si446x_device dev;
-extern uint8_t buf[255];
-extern volatile bool do_pong;
-extern struct pkt_buf tx_queue;
+// TODO: Mostly unimplemented
 
-int reload_config();
-int pre_transmit();
-int post_transmit();
-int reset_si446x();
-void rx_cb(struct si446x_device *dev, int err, int len, uint8_t *data);
-void tx_cb(struct si446x_device *dev, int err);
-int send_w_retry(int len, uint8_t *buf);
+#define STATUS_RESET            0
+//#define STATUS_CMDREPLY         1
+//#define STATUS_CMDERR           2
 
-#endif /* LFR_H_ */
+//#define STATUS_INTERNALERR      3
+//#define STATUS_RFICBUG          4
+//#define STATUS_CRCMISS          5
+//#define STATUS_PATIMEOUT        6
+//#define STATUS_PAOVERCUR        7
+
+#define STATUS_TXBUSY           8
+//#define STATUS_TXFULL           9
+//#define STATUS_TXEMPTY          10
+//#define STATUS_RXBUSY           11
+//#define STATUS_RXFULL           12
+//#define STATUS_RXNOTEMPTY       13
+
+
+void set_status(uint8_t key, bool val);
+bool get_status(uint8_t key);
+uint32_t get_all_status();
+
+#endif
