@@ -16,7 +16,7 @@ if __name__ == "__main__":
 
     for i in range(num_pkts):
         print('Sending packet {:03d}...'.format(i))
-        radio.tx('TEST!' * 25)
+        radio.tx('TEST!' * 51)
         time.sleep(delay_s)
     
 
