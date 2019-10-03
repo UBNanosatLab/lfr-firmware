@@ -23,7 +23,6 @@
 #include "mcu.h"
 #include "error.h"
 
-
 #define CYC_PER_US      8
 #define FOR_LOOP_CYC    4 // guessing here...
 #define F_CPU            8000000L
@@ -174,7 +173,6 @@ int fputs(const char *_ptr, register FILE *_fp)
   unsigned int i, len;
 
   len = strlen(_ptr);
-
   for(i=0 ; i<len ; i++)
   {
     while(!(UCA1IFG & UCTXIFG));

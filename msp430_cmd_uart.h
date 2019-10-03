@@ -16,9 +16,9 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-int uart_init();
-void uart_init_pins();
-int uart_putc(char c);
-int uart_putbuf(char* str, int len);
-int uart_available();
-char uart_getc();
+int cmd_uart_init();
+void cmd_uart_init_pins();
+int cmd_uart_putc(char c);
+int cmd_uart_putbuf(char* str, int len);
+int cmd_uart_available();
+char cmd_uart_getc();

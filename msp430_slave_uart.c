@@ -20,32 +20,30 @@
 #include "rbuf.h"
 
 //case-dependent aliases for pins and peripheral things
-#define UCAxCTLW0 UCA2CTLW0
-#define UCAxBRW UCA2BRW
-#define UCAxMCTLW UCA2MCTLW
-#define UCAxIE UCA2IE
-#define UCAxIV UCA2IV
-#define UCAxIFG UCA2IFG
-#define UCAxTXBUF UCA2TXBUF
-#define UCAxRXBUF UCA2RXBUF
-#define EUSCI_Ax_VECTOR EUSCI_A2_VECTOR
-#define USCI_Ax_ISR USCI_A2_ISR
+#define UCAxCTLW0 UCA0CTLW0
+#define UCAxBRW UCA0BRW
+#define UCAxMCTLW UCA0MCTLW
+#define UCAxIE UCA0IE
+#define UCAxIV UCA0IV
+#define UCAxIFG UCA0IFG
+#define UCAxTXBUF UCA0TXBUF
+#define UCAxRXBUF UCA0RXBUF
+#define EUSCI_Ax_VECTOR EUSCI_A0_VECTOR
+#define USCI_Ax_ISR USCI_A0_ISR
 
 rbuf txbuf, rxbuf;
-uint8_t uartInitialized=0;
 
-
-void uart_init_pins(){
+void slave_uart_init_pins(){
 
     // Note: the correct setting here varies by port
     // USCI_A2 UART operation
-    P5SEL0 |= (BIT4 | BIT5);
-    P5SEL1 &= ~(BIT4 | BIT5);
+    P2SEL0 |= (BIT1 | BIT0);
+    P2SEL1 &= ~(BIT1 | BIT0);
 }
 
 
-int uart_init(){
-    uart_init_pins();
+int slave_uart_init(){
+    slave_uart_init_pins();
     rbuf_init(&rxbuf);
     rbuf_init(&txbuf);
     // Configure USCI_Ax for UART mode
@@ -78,7 +76,7 @@ int uart_init(){
     return 0;
 }
 
-int uart_putc(char c){
+int slave_uart_putc(char c){
     int err;
     unsigned short sreg = __get_interrupt_state();
     do{
@@ -90,10 +88,10 @@ int uart_putc(char c){
     return 0;
 }
 
-int uart_putbuf(char* buf, int len){
+int slave_uart_putbuf(char* buf, int len){
     int i;
     for(i=0;i<len;i++){
-        uart_putc(buf[i]);
+        slave_uart_putc(buf[i]);
     }
     return 0;
 }
@@ -101,7 +99,7 @@ int uart_putbuf(char* buf, int len){
  * uart_available: query the size of the receive ring buffer
  * returns the number of bytes waiting in the RX ring buffer
  */
-int uart_available(){
+int slave_uart_available(){
     return rbuf_size(&rxbuf);
 }
 
@@ -109,7 +107,7 @@ int uart_available(){
  * uart_getc: get a received character out of the UART receive ring buffer
  * Careful! blocks until there's something to give you.  Check uart_available() first!
  */
-char uart_getc(){
+char slave_uart_getc(){
     char c;
     int err;
     unsigned short sreg = __get_interrupt_state();

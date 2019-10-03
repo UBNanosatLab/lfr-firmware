@@ -17,6 +17,7 @@
  */
 
 #include <msp430.h>
+#include <msp430_cmd_uart.h>
 #include <stdlib.h>
 
 #include "error.h"
@@ -26,7 +27,6 @@
 #include "lib446x/si446x.h"
 #include "cmd_handler.h"
 #include "cmd_parser.h"
-#include "msp430_uart.h"
 #include "settings.h"
 #include "status.h"
 
@@ -328,6 +328,6 @@ void cmd_err(int err) {
 }
 
 int host_reply_putc(uint8_t c) {
-    uart_putc(c);
+    cmd_uart_putc(c);
     return 0;
 }

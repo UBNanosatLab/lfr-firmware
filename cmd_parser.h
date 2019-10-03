@@ -68,7 +68,35 @@
 extern "C" {
 #endif
 
-void parse_char(uint8_t c);
+
+/**
+ * enum for states of the byte parser state machine
+ * Each state is named for the byte which the state machine expects to receive.
+ */
+enum parser_state_e {S_SYNC0, S_SYNC1, S_CMD, S_PAYLOADLEN, S_PAYLOAD, S_CHECKSUM0, S_CHECKSUM1};
+
+/**
+ * enum for the result of parsing a byte
+ * The results can be:
+ * wait for another character (take no action)
+ * execute the command (if the byte completed a valid command)
+ * invalid (the command was not valid, or the payload length was not valid for the command)
+ * bad checksum (checksum mismatch)
+ */
+enum parser_result_e {R_WAIT, R_ACT, R_INVALID, R_BADSUM};
+
+typedef struct {
+    enum parser_state_e next_state;
+    enum parser_result_e result;
+    uint8_t cmd;
+    uint8_t payload_len, payload_counter;
+    uint8_t payload[MAX_PAYLOAD_LEN];
+    uint16_t checksum;
+    uint16_t calc_checksum;
+} cmd_parser;
+
+void parser_init(cmd_parser *cp);
+void parse_char(cmd_parser *cp, uint8_t c);
 void send_reply_to_host();
 void internal_error(uint8_t code);
 void reply_cmd_error(uint8_t code);

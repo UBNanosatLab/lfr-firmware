@@ -28,86 +28,70 @@ bool validate_cmd(uint8_t cmd);
 bool validate_length(uint8_t cmd, uint8_t len);
 uint16_t fletcher(uint16_t old_checksum, uint8_t c);
 
-
-/**
- * enum for states of the byte parser state machine
- * Each state is named for the byte which the state machine expects to receive.
- */
-enum parser_state_e {S_SYNC0, S_SYNC1, S_CMD, S_PAYLOADLEN, S_PAYLOAD, S_CHECKSUM0, S_CHECKSUM1};
-
-/**
- * enum for the result of parsing a byte
- * The results can be:
- * wait for another character (take no action)
- * execute the command (if the byte completed a valid command)
- * invalid (the command was not valid, or the payload length was not valid for the command)
- * bad checksum (checksum mismatch)
- */
-enum parser_result_e {R_WAIT, R_ACT, R_INVALID, R_BADSUM};
+void parser_init(cmd_parser *cp){
+    cp->next_state = S_SYNC0;
+    cp->result = R_WAIT;
+    cp->payload_len = 0;
+    cp->payload_counter = 0;
+}
 
 /* \fn parse_char(uint8_t c)
  * \brief Character-based command parser
  * \details Takes one character at a time, checks for validity, reports error or executes a completed command
  * \param c The next byte
  */
-void parse_char(uint8_t c) {
-  static enum parser_state_e next_state = S_SYNC0;
-  static enum parser_result_e result = R_WAIT;
-  static uint8_t cmd;
-  static uint8_t payload_len = 0, payload_counter = 0;
-  static uint8_t payload[MAX_PAYLOAD_LEN];
-  static uint16_t checksum;
-  static uint16_t calc_checksum;
+void parse_char(cmd_parser *cp, uint8_t c) {
+
 
   /* step through the packet structure based on the latest character */
-  switch (next_state) {
+  switch (cp->next_state) {
     case S_SYNC0:
-      if (SYNCWORD_H == c) next_state = S_SYNC1;
+      if (SYNCWORD_H == c) cp->next_state = S_SYNC1;
       break;
     case S_SYNC1:
-      if (SYNCWORD_L == c) next_state = S_CMD;
+      if (SYNCWORD_L == c) cp->next_state = S_CMD;
       /* for a sync word "Sy", "SSy" should be detected as valid */
-      else if (SYNCWORD_H != c)next_state = S_SYNC0;
+      else if (SYNCWORD_H != c) cp->next_state = S_SYNC0;
       break;
     case S_CMD:
       if (validate_cmd(c)) {
-        cmd = c;
+        cp->cmd = c;
         //calc_checksum = fletcher(calc_checksum, c);
-        calc_checksum = fletcher(0, c);
-        next_state = S_PAYLOADLEN;
+        cp->calc_checksum = fletcher(0, c);
+        cp->next_state = S_PAYLOADLEN;
       } else {
-        result = R_INVALID;
+        cp->result = R_INVALID;
       }
       break;
     case S_PAYLOADLEN:
-      if (validate_length(cmd, c)) {
-        payload_len = c;
-        payload_counter = 0;
-        calc_checksum = fletcher(calc_checksum, c);
-        if (payload_len) {
-            next_state = S_PAYLOAD;
+      if (validate_length(cp->cmd, c)) {
+          cp->payload_len = c;
+          cp->payload_counter = 0;
+          cp->calc_checksum = fletcher(cp->calc_checksum, c);
+        if (cp->payload_len) {
+            cp->next_state = S_PAYLOAD;
         } else {
-            next_state = S_CHECKSUM0;
+            cp->next_state = S_CHECKSUM0;
         }
-      } else result = R_INVALID;
+      } else cp->result = R_INVALID;
       break;
     case S_PAYLOAD:
-      payload[payload_counter] = c;
-      calc_checksum = fletcher(calc_checksum, c);
-      payload_counter++;
-      if (payload_counter == payload_len) {
-        next_state = S_CHECKSUM0;
+        cp->payload[cp->payload_counter] = c;
+        cp->calc_checksum = fletcher(cp->calc_checksum, c);
+        cp->payload_counter++;
+      if (cp->payload_counter == cp->payload_len) {
+          cp->next_state = S_CHECKSUM0;
       }
       break;
     case S_CHECKSUM0:
-      checksum = ((uint16_t) c) << 8;
-      next_state = S_CHECKSUM1;
+        cp->checksum = ((uint16_t) c) << 8;
+        cp->next_state = S_CHECKSUM1;
       break;
     case S_CHECKSUM1:
-      checksum = checksum | (uint16_t)c;
-      if (calc_checksum == checksum) {
-        result = R_ACT;
-      } else result = R_BADSUM;
+        cp->checksum = cp->checksum | (uint16_t)c;
+      if (cp->calc_checksum == cp->checksum) {
+          cp->result = R_ACT;
+      } else cp->result = R_BADSUM;
       break;
     default:
       //error();
@@ -115,21 +99,21 @@ void parse_char(uint8_t c) {
   }//switch(c)
 
   /* if that character created an error or concluded a valid packet, do something */
-  switch (result) {
+  switch (cp->result) {
     case R_INVALID:
-      next_state = S_SYNC0;
-      result = R_WAIT;
-      cmd_err(ECMDINVAL);
+        cp->next_state = S_SYNC0;
+        cp->result = R_WAIT;
+        cmd_err(ECMDINVAL);
       break;
     case R_BADSUM:
-      next_state = S_SYNC0;
-      result = R_WAIT;
+        cp->next_state = S_SYNC0;
+        cp->result = R_WAIT;
       cmd_err(ECMDBADSUM);
       break;
     case R_ACT:
-      next_state = S_SYNC0;
-      result = R_WAIT;
-      command_handler(cmd, payload_len, payload);
+        cp->next_state = S_SYNC0;
+        cp->result = R_WAIT;
+      command_handler(cp->cmd, cp->payload_len, cp->payload);
       send_reply_to_host();
     case R_WAIT:
       break;

@@ -17,6 +17,8 @@
  */
 
 #include <msp430.h>
+#include <msp430_cmd_uart.h>
+#include <msp430_slave_uart.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include "pins.h"
@@ -25,11 +27,11 @@
 #include "mcu.h"
 #include "radio.h"
 #include "amp.h"
-#include "msp430_uart.h"
 #include "cmd_parser.h"
 #include "settings.h"
 #include "pkt_buf.h"
 #include "status.h"
+
 
 // Backing buffer for tx_queue
 uint8_t __attribute__((persistent)) tx_backing_buf[16384] = {0};
@@ -319,13 +321,15 @@ int reset_si446x()
 
 int main(void)
 {
+    cmd_parser host_cmd_parser;
+    cmd_parser slave_cmd_parser;
     int err;
     WDTCTL = WDTPW | WDTHOLD;   // stop watchdog timer
 
     settings_load_saved();
     pkt_buf_init(&tx_queue, sizeof(tx_backing_buf), tx_backing_buf);
     mcu_init();
-    uart_init();
+    cmd_uart_init();
 
     gpio_config(TX_ACT_PIN, OUTPUT);
     gpio_write(TX_ACT_PIN, LOW);
@@ -333,8 +337,8 @@ int main(void)
     gpio_write(PA_PWR_EN_PIN, LOW);
 
     //Make sure the DAC has been reset
-    gpio_config(DAC_nPWR_PIN, OUTPUT);
-    gpio_write(DAC_nPWR_PIN, HIGH);
+    //use weak pullup/down to soften transitions and prevent glitching
+    gpio_config(DAC_nPWR_PIN, INPUT_PULLUP); //Weakly drive the PMOS gate high
     gpio_config(SDA_PIN, OUTPUT);   //Drive I2C pins low to discharge the cap quickly
     gpio_config(SCL_PIN, OUTPUT);
     gpio_write(SDA_PIN, LOW);
@@ -342,7 +346,8 @@ int main(void)
     delay_micros(10000); //wait for the 3V3 DAC cap to discharge fully
     gpio_config(SDA_PIN, INPUT);
     gpio_config(SCL_PIN, INPUT);
-    gpio_write(DAC_nPWR_PIN, LOW); //turn the DAC back on
+    //turn the DAC back on
+    gpio_config(DAC_nPWR_PIN, INPUT_PULLDOWN); //Weakly drive the PMOS gate low
 
     //Power-on tests
     printf("LFR Starting up...\n");
@@ -381,6 +386,9 @@ int main(void)
         return err;
     }
 
+    parser_init(&host_cmd_parser);
+    parser_init(&slave_cmd_parser);
+
     // Main loop
     while (true) {
 
@@ -395,11 +403,11 @@ int main(void)
                 si446x_recv_async(&dev, 255, buf, rx_cb);
                 internal_error(-err);
             }
-        } else if(uart_available()) {
-                char c = uart_getc();
-                parse_char(c);
+        } else if(cmd_uart_available()) {
+                char c = cmd_uart_getc();
+                parse_char(&host_cmd_parser, c);
         } else {
-                LPM0; //enter LPM0 until an interrupt happens on the uart
+                //LPM0; //enter LPM0 until an interrupt happens on the uart
         }
     }
 }
