@@ -30,6 +30,7 @@
 #include "settings.h"
 #include "pkt_buf.h"
 #include "status.h"
+#include "user.h"
 
 // Backing buffer for tx_queue
 uint8_t __attribute__((persistent)) tx_backing_buf[16384] = {0};
@@ -450,4 +451,14 @@ __interrupt void rx_timeout_isr()
     si446x_rx_timeout(&dev);
     radio_irq = true;
     LPM4_EXIT; //This clears all the LPM bits, so it will leave the chip in run mode after the ISR
+}
+
+#pragma vector=TIMER2_A0_VECTOR
+__interrupt void tick_isr()
+{
+    TA2CCTL0 = 0;                           // TACCR0 interrupt disabled
+    TA2CTL |= TACLR;                        // Clear count
+    TA2CTL |= MC__UP;                       // Start timer in UP mode
+    TA2CCTL0 = CCIE;                        // TACCR0 interrupt enabled
+    user_tick();
 }

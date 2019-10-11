@@ -56,7 +56,16 @@
 /* Peripheral Group */
 //#define CMD_GPIO_WRITE          0x40
 
-/* Error / Internal Use Group */
+/* Error / User Use Group */
+#define CMD_USER0               0x70
+#define CMD_USER1               0x71
+#define CMD_USER2               0x72
+#define CMD_USER3               0x73
+#define CMD_USER4               0x74
+#define CMD_USER5               0x75
+#define CMD_USER6               0x76
+#define CMD_USER7               0x77
+// ...
 #define CMD_INTERNALERR         0x7E
 #define CMD_REPLYERR            0x7F
 

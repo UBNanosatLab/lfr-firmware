@@ -18,6 +18,7 @@
 
 #include "cmd_parser.h"
 #include "cmd_handler.h"
+#include "user.h"
 
 #include "error.h"
 #include "lfr.h"
@@ -151,6 +152,14 @@ bool validate_cmd(uint8_t cmd) {
     case CMD_SAVE_CFG:
     case CMD_CFG_DEFAULT:
     case CMD_GET_QUEUE_DEPTH:
+    case CMD_USER0:
+    case CMD_USER1:
+    case CMD_USER2:
+    case CMD_USER3:
+    case CMD_USER4:
+    case CMD_USER5:
+    case CMD_USER6:
+    case CMD_USER7:
       return true;
     default:
       return false;
@@ -229,6 +238,16 @@ void command_handler(uint8_t cmd, uint8_t len, uint8_t* payload) {
       case CMD_GET_QUEUE_DEPTH:
           cmd_get_queue_depth();
           break;
+        
+      case CMD_USER0:
+      case CMD_USER1:
+      case CMD_USER2:
+      case CMD_USER3:
+      case CMD_USER4:
+      case CMD_USER5:
+      case CMD_USER6:
+      case CMD_USER7:
+        cmd_user(cmd & 0x07, len, payload);
     }
 }
 
