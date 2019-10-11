@@ -29,16 +29,17 @@ uint32_t ticks = 0;
 
 void cmd_user(uint8_t cmd, uint8_t len, uint8_t *data)
 {
+    uint8_t arr[] = {
+        (ticks >> 24) & 0xFF, (ticks >> 16) & 0xFF,
+        (ticks >> 8) & 0xFF, ticks & 0xFF
+    };
+
     switch(cmd) {
     case CMD_USER0:
-        reply(CMD_USER0, 13, hello);
+        reply(CMD_USER0, 13, (uint8_t *)hello);
         break;
     case CMD_USER1:
-        uint8_t arr[] = {
-            (ticks >> 24) & 0xFF, (ticks >> 16) & 0xFF, 
-            (ticks >> 8) & 0xFF, ticks & 0xFF
-        };
-        reply(CMD_USER1, 4, &ticks);
+        reply(CMD_USER1, 4, arr);
         break;
     default:
         cmd_err(ECMDINVAL);

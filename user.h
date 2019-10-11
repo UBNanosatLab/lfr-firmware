@@ -27,3 +27,5 @@ void cmd_user(uint8_t cmd, uint8_t len, uint8_t *data);
 
 // Called periodically, once every 50ms
 void user_tick();
+
+#endif
