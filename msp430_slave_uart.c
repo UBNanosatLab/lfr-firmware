@@ -36,9 +36,9 @@ rbuf txbuf, rxbuf;
 void slave_uart_init_pins(){
 
     // Note: the correct setting here varies by port
-    // USCI_A2 UART operation
-    P2SEL0 |= (BIT1 | BIT0);
-    P2SEL1 &= ~(BIT1 | BIT0);
+    // USCI_A0 UART operation
+    P2SEL1 |= (BIT1 | BIT0);
+    P2SEL0 &= ~(BIT1 | BIT0);
 }
 
 
