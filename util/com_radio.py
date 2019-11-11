@@ -14,6 +14,8 @@ from enum import Enum
 SYNCWORD_H = 0xBE
 SYNCWORD_L = 0xEF
 
+MODEL="duplex"
+
 class ParseState(Enum):
     SYNC_H = 0
     SYNC_L = 1
@@ -121,6 +123,7 @@ class Radio:
     def nop_flush(self, num):
         for _ in range(num):
             self.send_pkt(Command.NOP)
+            sleep(0.002)
 
     def checksum(self, data):
         def feltcher(chksum, byte):
@@ -312,10 +315,16 @@ class Radio:
         elif cmd == (Command.GET_CFG.value | Command.REPLY.value):
 
             cfg = {}
-            cfg['cfg_ver'], cfg['freq'], cfg['modem_config'], \
-            cfg['txco_vpull'], cfg['tx_gate_bias'], cfg['tx_vdd'], \
-            cfg['pa_ilimit'], cfg['tx_vdd_delay'], cfg['flags'],\
-            cfg['callsign'] = struct.unpack("!BIBHHHHHH8s", pay)
+            if MODEL == 'duplex':
+                cfg['cfg_ver'], cfg['rx_freq'], cfg['tx_freq'], cfg['modem_config'], \
+                cfg['txco_vpull'], cfg['tx_gate_bias'], cfg['tx_vdd'], \
+                cfg['pa_ilimit'], cfg['tx_vdd_delay'], cfg['flags'],\
+                cfg['callsign'] = struct.unpack("!BIIBHHHHHH8s", pay)
+            else:
+                cfg['cfg_ver'], cfg['freq'], cfg['modem_config'], \
+                cfg['txco_vpull'], cfg['tx_gate_bias'], cfg['tx_vdd'], \
+                cfg['pa_ilimit'], cfg['tx_vdd_delay'], cfg['flags'],\
+                cfg['callsign'] = struct.unpack("!BIIBHHHHHH8s", pay)
 
             cfg['callsign'] = cfg['callsign'].decode("utf-8")
 
@@ -329,7 +338,14 @@ class Radio:
 
         cfg['callsign'] = cfg['callsign'].encode("utf-8")
 
-        data = struct.pack("!BIBHHHHHH8s", \
+        if MODEL == 'duplex':
+            data = struct.pack("!BIIBHHHHHH8s", \
+            cfg['cfg_ver'], cfg['rx_freq'], cfg['tx_freq'], cfg['modem_config'], \
+            cfg['txco_vpull'], cfg['tx_gate_bias'], cfg['tx_vdd'], \
+            cfg['pa_ilimit'], cfg['tx_vdd_delay'], cfg['flags'], \
+            cfg['callsign'])
+        else:
+            data = struct.pack("!BIBHHHHHH8s", \
             cfg['cfg_ver'], cfg['freq'], cfg['modem_config'], \
             cfg['txco_vpull'], cfg['tx_gate_bias'], cfg['tx_vdd'], \
             cfg['pa_ilimit'], cfg['tx_vdd_delay'], cfg['flags'], \

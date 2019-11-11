@@ -19,7 +19,7 @@
 #ifndef PINS_H_
 #define PINS_H_
 
-// Pin definitions for Rev. 2B
+// Pin definitions for duplex receiver Rev. 2C
 #define NSEL_PIN        0x37
 #define SDN_PIN         0x45
 #define INT_PIN         0x53
@@ -39,6 +39,10 @@
 #define DAC_nPWR_PIN    0x73
 #define SDA_PIN         0x70
 #define SCL_PIN         0x71
+
+#define SLAVE_RST_PIN   0x27
+#define SLAVE_TXO_PIN   0x21
+#define SLAVE_RXI_PIN   0x20
 
 #define GATE_CHAN   0
 #define TCXO_CHAN   1

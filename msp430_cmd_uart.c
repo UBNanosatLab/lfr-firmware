@@ -31,7 +31,8 @@
 #define EUSCI_Ax_VECTOR EUSCI_A2_VECTOR
 #define USCI_Ax_ISR USCI_A2_ISR
 
-rbuf txbuf, rxbuf;
+rbuf __attribute__((persistent)) ctxbuf = {.head=0, .tail=0};
+rbuf __attribute__((persistent)) crxbuf = {.head=0, .tail=0};
 
 void cmd_uart_init_pins(){
 
@@ -44,8 +45,8 @@ void cmd_uart_init_pins(){
 
 int cmd_uart_init(){
     cmd_uart_init_pins();
-    rbuf_init(&rxbuf);
-    rbuf_init(&txbuf);
+    rbuf_init(&crxbuf);
+    rbuf_init(&ctxbuf);
     // Configure USCI_Ax for UART mode
     UCAxCTLW0 = UCSWRST;                // Put eUSCI in reset
     UCAxCTLW0 |= UCSSEL__SMCLK;         // CLK = SMCLK
@@ -81,7 +82,7 @@ int cmd_uart_putc(char c){
     unsigned short sreg = __get_interrupt_state();
     do{
         __disable_interrupt();      //disable interrupts while accessing UART buffer
-        err=rbuf_put(&txbuf, c);    //attempt to put c in the transmit queue
+        err=rbuf_put(&ctxbuf, c);    //attempt to put c in the transmit queue
         __set_interrupt_state(sreg);//return interrupts to previous enable/disable state
     }while(err<0);                  //and keep trying until it fits
     UCAxIE |= UCTXIE; //enable the interrupt if it wasn't already
@@ -100,7 +101,7 @@ int cmd_uart_putbuf(char* buf, int len){
  * returns the number of bytes waiting in the RX ring buffer
  */
 int cmd_uart_available(){
-    return rbuf_size(&rxbuf);
+    return rbuf_size(&crxbuf);
 }
 
 /*
@@ -113,7 +114,7 @@ char cmd_uart_getc(){
     unsigned short sreg = __get_interrupt_state();
     do{
         __disable_interrupt();          //disable interrupts while accessing UART buffer
-        err=rbuf_get(&rxbuf, &c);       //attempt to get a character
+        err=rbuf_get(&crxbuf, &c);       //attempt to get a character
         __set_interrupt_state(sreg);    //return interrupts to previous enable/disable state
     }while(err<0);                      //and keep trying until a character is acquired
     return c;
@@ -134,13 +135,13 @@ void __attribute__ ((interrupt(EUSCI_Ax_VECTOR))) USCI_Ax_ISR (void)
         case USCI_UART_UCRXIFG:
             //UCAxTXBUF = UCAxRXBUF;
             //move the received byte into the RX ring buffer
-            rbuf_put(&rxbuf, UCAxRXBUF);
+            rbuf_put(&crxbuf, UCAxRXBUF);
             break;
         case USCI_UART_UCTXIFG:
             //send from the TX ring buffer if possible
-            if(rbuf_size(&txbuf)){
+            if(rbuf_size(&ctxbuf)){
                 char c;
-                rbuf_get(&txbuf, &c);
+                rbuf_get(&ctxbuf, &c);
                 UCAxTXBUF = c;
             } else { //tx buffer's empty
                 UCAxIE &= ~(UCTXIE); //disable the TX interrupt until there's something to send

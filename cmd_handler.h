@@ -19,6 +19,8 @@
 #ifndef CMD_HANDLER_H
 #define CMD_HANDLER_H
 
+#define CONFIG_LEN (30)
+
 /**
  * Send reply character to the flight computer
  * @param c the character to send

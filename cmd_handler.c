@@ -88,7 +88,7 @@ void cmd_get_queue_depth() {
 }
 
 void cmd_set_freq(uint32_t freq) {
-    settings.freq = freq;
+    settings.rx_freq = freq;
     int err = set_frequency(freq);
 
     if (err) {
@@ -204,7 +204,7 @@ void cmd_set_cfg(int len, uint8_t *data)
     unsigned int i = 0;
 
     // Right length?
-    if (len != 26) {
+    if (len != CONFIG_LEN) {
         cmd_err(ECMDINVAL);
         return;
     }
@@ -218,8 +218,8 @@ void cmd_set_cfg(int len, uint8_t *data)
     // Okay, we've got the correct length and version!
     // Set the settings!
 
-    settings.freq = ((uint32_t)data[i] << 24) | ((uint32_t)data[i+1] << 16) | ((uint32_t)data[i+2] << 8) | data[i+3];
-    i += 4;
+    settings.rx_freq = ((uint32_t)data[i] << 24) | ((uint32_t)data[i+1] << 16) | ((uint32_t)data[i+2] << 8) | data[i+3];
+    i += 8; //skip over the TX freq bytes
 
     settings.modem_config = data[i];
     i += 1;
@@ -262,10 +262,15 @@ void cmd_get_cfg()
     uint8_t data[] = {
                     SETTINGS_VER,
 
-                    settings.freq >> 24,
-                    (settings.freq >> 16) & 0xFF,
-                    (settings.freq >> 8) & 0xFF,
-                    settings.freq & 0xFF,
+                    settings.rx_freq >> 24,
+                    (settings.rx_freq >> 16) & 0xFF,
+                    (settings.rx_freq >> 8) & 0xFF,
+                    settings.rx_freq & 0xFF,
+
+                    settings.tx_freq >> 24,
+                    (settings.tx_freq >> 16) & 0xFF,
+                    (settings.tx_freq >> 8) & 0xFF,
+                    settings.tx_freq & 0xFF,
 
                     settings.modem_config,
 

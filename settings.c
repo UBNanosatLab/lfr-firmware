@@ -23,7 +23,8 @@
 #include "radio.h"
 
 #define DEFAULT_SETTINGS {\
-    .freq = 434000000L,   \
+    .rx_freq = 434000000L,   \
+    .tx_freq = 434000000L,   \
     .modem_config = DATA_10K_DEV_5K,    \
     .tcxo_vpull = 1256,   \
     .tx_gate_bias = 500,  /* 0.5V bias is enough to see in testing, but very very low output power */ \

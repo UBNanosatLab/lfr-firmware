@@ -33,7 +33,8 @@
 
 
 struct lfr_settings {
-    uint32_t freq;
+    uint32_t rx_freq;
+    uint32_t tx_freq;
     uint8_t modem_config;
     uint16_t tcxo_vpull;
     uint16_t tx_gate_bias;

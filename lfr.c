@@ -225,7 +225,7 @@ int reload_config()
 {
     int err;
 
-    err = set_frequency(settings.freq);
+    err = set_frequency(settings.rx_freq);
     if (err) {
         return err;
     }
@@ -326,15 +326,10 @@ int main(void)
     int err;
     WDTCTL = WDTPW | WDTHOLD;   // stop watchdog timer
 
-    settings_load_saved();
-    pkt_buf_init(&tx_queue, sizeof(tx_backing_buf), tx_backing_buf);
-    mcu_init();
-    cmd_uart_init();
-
-    gpio_config(TX_ACT_PIN, OUTPUT);
-    gpio_write(TX_ACT_PIN, LOW);
-    gpio_config(PA_PWR_EN_PIN, OUTPUT);
-    gpio_write(PA_PWR_EN_PIN, LOW);
+    //Make sure the slave transmitter has also been reset.  Start by discharging the reset capacitor.
+    gpio_config(SLAVE_RST_PIN, OUTPUT);
+    gpio_write(SLAVE_RST_PIN, LOW);
+    //Now use the DAC reset time to make sure that reset capacitor is discharged
 
     //Make sure the DAC has been reset
     //use weak pullup/down to soften transitions and prevent glitching
@@ -348,6 +343,27 @@ int main(void)
     gpio_config(SCL_PIN, INPUT);
     //turn the DAC back on
     gpio_config(DAC_nPWR_PIN, INPUT_PULLDOWN); //Weakly drive the PMOS gate low
+
+    //back to resetting the slave transmitter...
+    //delay_micros(10000);
+    gpio_write(SLAVE_RST_PIN, HIGH);
+    gpio_config(SLAVE_TXO_PIN, OUTPUT);
+    gpio_config(SLAVE_RXI_PIN, OUTPUT);
+    gpio_write(SLAVE_TXO_PIN, LOW);
+    gpio_write(SLAVE_RXI_PIN, LOW);
+    delay_micros(10000);
+    gpio_write(SLAVE_RST_PIN, LOW);
+
+    settings_load_saved();
+    pkt_buf_init(&tx_queue, sizeof(tx_backing_buf), tx_backing_buf);
+    mcu_init();
+    cmd_uart_init();
+    slave_uart_init();
+
+    gpio_config(TX_ACT_PIN, OUTPUT);
+    gpio_write(TX_ACT_PIN, LOW);
+    gpio_config(PA_PWR_EN_PIN, OUTPUT);
+    gpio_write(PA_PWR_EN_PIN, LOW);
 
     //Power-on tests
     printf("LFR Starting up...\n");
@@ -386,8 +402,8 @@ int main(void)
         return err;
     }
 
-    parser_init(&host_cmd_parser);
-    parser_init(&slave_cmd_parser);
+    parser_init(&host_cmd_parser, PARSER_MODE_CMD);
+    parser_init(&slave_cmd_parser, PARSER_MODE_REPLY);
 
     // Main loop
     while (true) {
@@ -406,6 +422,10 @@ int main(void)
         } else if(cmd_uart_available()) {
                 char c = cmd_uart_getc();
                 parse_char(&host_cmd_parser, c);
+        } else if(slave_uart_available()) {
+                char c = slave_uart_getc();
+                parse_char(&slave_cmd_parser, c);
+                //cmd_uart_putc(c);
         } else {
                 //LPM0; //enter LPM0 until an interrupt happens on the uart
         }

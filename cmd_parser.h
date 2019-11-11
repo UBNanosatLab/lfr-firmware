@@ -85,9 +85,17 @@ enum parser_state_e {S_SYNC0, S_SYNC1, S_CMD, S_PAYLOADLEN, S_PAYLOAD, S_CHECKSU
  */
 enum parser_result_e {R_WAIT, R_ACT, R_INVALID, R_BADSUM};
 
+/**
+ * enum for parser mode
+ * cmd: parse host-to-radio commands
+ * reply: parse radio-to-host replies
+ */
+enum parser_mode_e {PARSER_MODE_CMD, PARSER_MODE_REPLY};
+
 typedef struct {
     enum parser_state_e next_state;
     enum parser_result_e result;
+    enum parser_mode_e mode;
     uint8_t cmd;
     uint8_t payload_len, payload_counter;
     uint8_t payload[MAX_PAYLOAD_LEN];
@@ -95,12 +103,13 @@ typedef struct {
     uint16_t calc_checksum;
 } cmd_parser;
 
-void parser_init(cmd_parser *cp);
+void parser_init(cmd_parser *cp, enum parser_mode_e mode);
 void parse_char(cmd_parser *cp, uint8_t c);
 void send_reply_to_host();
 void internal_error(uint8_t code);
 void reply_cmd_error(uint8_t code);
 void reply(uint8_t cmd, int len, uint8_t *payload);
+void slave_cmd(uint8_t cmd, int len, uint8_t *payload);
 
 #ifdef __cplusplus
 }
