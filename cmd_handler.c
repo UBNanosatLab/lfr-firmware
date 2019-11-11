@@ -219,7 +219,10 @@ void cmd_set_cfg(int len, uint8_t *data)
     // Set the settings!
 
     settings.rx_freq = ((uint32_t)data[i] << 24) | ((uint32_t)data[i+1] << 16) | ((uint32_t)data[i+2] << 8) | data[i+3];
-    i += 8; //skip over the TX freq bytes
+    i += 4;
+
+    settings.tx_freq = ((uint32_t)data[i] << 24) | ((uint32_t)data[i+1] << 16) | ((uint32_t)data[i+2] << 8) | data[i+3];
+    i += 4;
 
     settings.modem_config = data[i];
     i += 1;

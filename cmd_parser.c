@@ -280,6 +280,7 @@ void command_handler(uint8_t cmd, uint8_t len, uint8_t* payload) {
 }
 
 void reply_handler(uint8_t cmd, uint8_t len, uint8_t* payload) {
+    cmd &= ~(CMD_REPLY);
     switch(cmd){
       case CMD_SET_CFG:
       case CMD_GET_CFG:
