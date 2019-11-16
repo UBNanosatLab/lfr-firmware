@@ -141,7 +141,7 @@ class Radio:
         return chksum
 
     def send_pkt(self, cmd, data=bytes()):
-    
+
         pkt = bytes([cmd.value, len(data)])
         pkt += data
         chksum = self.checksum(pkt)
@@ -199,7 +199,10 @@ class Radio:
             raise Exception('Unexpected response: ' + str((hex(cmd), pay)))
 
     def set_freq(self, freq):
-        self.send_pkt(Command.SET_FREQ, struct.pack("!I", freq))
+        if MODEL == "duplex":
+            self.send_pkt(Command.SET_FREQ, struct.pack("!II", freq[0], freq[1]))
+        else:
+            self.send_pkt(Command.SET_FREQ, struct.pack("!I", freq))
         (cmd, pay) = self.recv()
 
         if cmd  == Command.ERROR.value | Command.REPLY.value:
@@ -221,6 +224,20 @@ class Radio:
             return
         else:
             raise Exception('Unexpected response: ' + str((hex(cmd), pay)))
+
+    def get_txpwr(self):
+        self.send_pkt(Command.GET_TXPWR)
+
+        (cmd, pay) = self.recv()
+
+        if cmd  == (Command.ERROR.value | Command.REPLY.value):
+            err = RadioException(pay[0])
+            raise err
+
+        elif cmd == (Command.GET_TXPWR.value | Command.REPLY.value):
+            txpwr = struct.unpack("!H", pay)
+            print("TX power: " + str(txpwr[0]))
+
 
     def tx(self, data):
         self.send_pkt(Command.TXDATA, data if isinstance(data, bytes) else data.encode('utf-8'))
@@ -324,7 +341,7 @@ class Radio:
                 cfg['cfg_ver'], cfg['freq'], cfg['modem_config'], \
                 cfg['txco_vpull'], cfg['tx_gate_bias'], cfg['tx_vdd'], \
                 cfg['pa_ilimit'], cfg['tx_vdd_delay'], cfg['flags'],\
-                cfg['callsign'] = struct.unpack("!BIIBHHHHHH8s", pay)
+                cfg['callsign'] = struct.unpack("!BIBHHHHHH8s", pay)
 
             cfg['callsign'] = cfg['callsign'].decode("utf-8")
 
@@ -423,19 +440,19 @@ if __name__ == '__main__':
             radio.tx(data)
             print('Sent ' + str(len(data)) + ' byte(s)')
             # Look ma, no sleep!
-    
+
     elif (sys.argv[2] == 'get-cfg' and len(sys.argv) == 3):
         print(json.dumps(radio.get_cfg(), indent=4))
 
-    elif (sys.argv[2] == 'load-cfg' and len(sys.argv) == 4): 
+    elif (sys.argv[2] == 'load-cfg' and len(sys.argv) == 4):
         with open(sys.argv[3], 'r') as f:
             cfg = json.load(f)
-        
+
         radio.set_cfg(cfg)
         new_cfg = json.dumps(radio.get_cfg(), indent=4)
         print("Successfully loaded config:", sys.argv[3])
         print(new_cfg)
-     
+
     elif (sys.argv[2] == 'save-cfg' and len(sys.argv) == 3):
         radio.save_cfg()
 
@@ -458,5 +475,26 @@ if __name__ == '__main__':
     elif (sys.argv[2] == 'nop' and len(sys.argv) == 3):
         radio.nop()
 
+    elif (sys.argv[2] == 'set-freq' and len(sys.argv) == 4):
+        if MODEL == 'duplex':
+            print('Usage: set-freq rx_freq tx_freq')
+        else:
+            radio.set_freq(int(sys.argv[3]))
+
+    elif (sys.argv[2] == 'set-freq' and len(sys.argv) == 5):
+        if MODEL == 'duplex':
+            radio.set_freq((int(sys.argv[3]), int(sys.argv[4])))
+        else:
+            print('Usage: set-freq freq')
+    elif (sys.argv[2] == 'get-txpwr' and len(sys.argv) == 3):
+        radio.get_txpwr()
+
+    elif (sys.argv[2] == 'set-txpwr' and len(sys.argv) == 4):
+        radio.set_txpwr(int(sys.argv[3]))
+        radio.get_txpwr()
+
     else:
-        print('Usage: python3', sys.argv[0], '/dev/<RADIO_UART> [rx | tx n | get-cfg | load-cfg | save-cfg | default-cfg | tx-psr | tx-abort | reset]')
+        if MODEL == 'duplex':
+            print('Usage: python3', sys.argv[0], '/dev/<RADIO_UART> [rx | tx n | get-cfg | load-cfg | save-cfg | default-cfg | tx-psr | tx-abort | reset | set-freq rx_f tx_f]')
+        else:
+            print('Usage: python3', sys.argv[0], '/dev/<RADIO_UART> [rx | tx n | get-cfg | load-cfg | save-cfg | default-cfg | tx-psr | tx-abort | reset | set-freq f]')
