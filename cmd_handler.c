@@ -87,9 +87,10 @@ void cmd_get_queue_depth() {
     reply(CMD_GET_QUEUE_DEPTH, sizeof(data), data);
 }
 
-void cmd_set_freq(uint32_t freq) {
-    settings.rx_freq = freq;
-    int err = set_frequency(freq);
+void cmd_set_freq(uint32_t rx_freq, uint32_t tx_freq) {
+    settings.rx_freq = rx_freq;
+    settings.tx_freq = tx_freq;
+    int err = set_frequency(rx_freq);
 
     if (err) {
         reply_cmd_error((uint8_t) -err);

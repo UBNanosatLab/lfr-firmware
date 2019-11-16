@@ -208,7 +208,7 @@ bool validate_reply_length(uint8_t rep, uint8_t len) {
     return false;
   }
 
-  switch (rep) {
+  switch (rep & ~(CMD_REPLY)) {
     case CMD_READ_TXPWR:
       return len == 2;
     case CMD_RXDATA:
@@ -249,9 +249,11 @@ void command_handler(uint8_t cmd, uint8_t len, uint8_t* payload) {
           cmd_reset();
           break;
       case CMD_SET_FREQ:
-          //first four bytes are RX freq
+          //first four bytes are RX freq, next four are TX freq
           cmd_set_freq((uint32_t) payload[0] << 24 | (uint32_t) payload[1] << 16 | (uint32_t) payload[2] << 8 |
-                     payload[3]);
+                     payload[3],
+                     (uint32_t) payload[4] << 24 | (uint32_t) payload[5] << 16 | (uint32_t) payload[6] << 8 |
+                     payload[7]);
           //Send the next 4 bytes to the slave as the TX freq
           payload += 4;
           slave_cmd(cmd, 4, payload);
@@ -280,8 +282,7 @@ void command_handler(uint8_t cmd, uint8_t len, uint8_t* payload) {
 }
 
 void reply_handler(uint8_t cmd, uint8_t len, uint8_t* payload) {
-    cmd &= ~(CMD_REPLY);
-    switch(cmd){
+    switch(cmd & ~(CMD_REPLY)){
       case CMD_SET_CFG:
       case CMD_GET_CFG:
           //These were already replied to.

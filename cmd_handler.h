@@ -92,7 +92,7 @@ void cmd_cfg_default();
  * Changes the frequency
  * @param freq desired frequency in Hz
  */
-void cmd_set_freq(uint32_t freq);
+void cmd_set_freq(uint32_t rx_freq, uint32_t tx_freq);
 
 /**
  * Abort TX
