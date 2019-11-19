@@ -10,3 +10,6 @@ Debug/*
 *.pyc
 
 .DS_Store
+.jxbrowser-data/
+.metadata/
+RemoteSystemsTempFiles/
