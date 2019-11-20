@@ -11,6 +11,8 @@ import json
 
 from enum import Enum
 
+from random import randint
+
 SYNCWORD_H = 0xBE
 SYNCWORD_L = 0xEF
 
@@ -402,7 +404,9 @@ if __name__ == '__main__':
     elif (sys.argv[2] == 'tx' and len(sys.argv) == 4):
         sleep(1)
         for i in range(int(sys.argv[3])):
-            data = ('KC2QOL ' + str(i + 1) + ' ').ljust(255, 'x')
+            data = ('KC2QOL ' + str(i + 1) + ' ')
+            data = data + ''.join([chr(randint(0x20, 0x7f)) for _ in range(0, 255 - len(data))])
+#            data = ('KC2QOL ' + str(i + 1) + ' ').ljust(255, 'x')
             print('TX>', data)
             radio.tx(data)
             print('Sent ' + str(len(data)) + ' byte(s)')
