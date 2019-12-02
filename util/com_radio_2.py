@@ -21,16 +21,16 @@ class ParseState(Enum):
 class Command(Enum):
     NOP = 0x00
     RESET = 0x01
-    TXDATA = 0x02
-    GET_TXPWR = 0x03
-    SET_TXPWR = 0x04
+    TXDATA = 0x10
+    GET_TXPWR = 0x25
+    SET_TXPWR = 0x26
 
-    GET_CFG = 0x08
-    SET_CFG = 0x09
-    SAVE_CFG = 0x0A
-    CFG_DEFAULT = 0x0B
+    GET_CFG = 0x20
+    SET_CFG = 0x21
+    SAVE_CFG = 0x22
+    CFG_DEFAULT = 0x23
 
-    RXDATA = 0x10
+    RXDATA = 0x11
 
     ERROR = 0x7F
 

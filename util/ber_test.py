@@ -115,7 +115,8 @@ def main():
     #              Configuration           #
     ########################################
 
-    port = '/dev/tty.SLAB_USBtoUART'
+#    port = '/dev/tty.SLAB_USBtoUART'
+    port = '/dev/ttyUSB0'
     baud = 115200
 
     freq = 434.000e6
