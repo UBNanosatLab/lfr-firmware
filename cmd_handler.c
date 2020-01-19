@@ -39,8 +39,12 @@ void cmd_reset() {
 }
 
 void cmd_set_txpwr(uint16_t pwr) {
-    settings.tx_gate_bias = pwr;
-    reply(CMD_SET_TXPWR, 0, NULL);
+    if (get_status(STATUS_TXBUSY)) {
+        reply_cmd_error(EBUSY);
+    } else {
+        settings.tx_gate_bias = pwr;
+        reply(CMD_SET_TXPWR, 0, NULL);
+    }
 }
 
 void cmd_get_txpwr() {
@@ -88,13 +92,17 @@ void cmd_get_queue_depth() {
 }
 
 void cmd_set_freq(uint32_t freq) {
-    settings.freq = freq;
-    int err = set_frequency(freq);
-
-    if (err) {
-        reply_cmd_error((uint8_t) -err);
+    if (get_status(STATUS_TXBUSY)) {
+        reply_cmd_error(EBUSY);
     } else {
-        reply(CMD_SET_FREQ, 0, NULL);
+        settings.freq = freq;
+        int err = set_frequency(freq);
+
+        if (err) {
+            reply_cmd_error((uint8_t) -err);
+        } else {
+            reply(CMD_SET_FREQ, 0, NULL);
+        }
     }
 }
 
@@ -201,17 +209,22 @@ void cmd_tx_psr()
 
 void cmd_set_cfg(int len, uint8_t *data)
 {
+    if (get_status(STATUS_TXBUSY)) {
+        reply_cmd_error(EBUSY);
+        return;
+    }
+
     unsigned int i = 0;
 
     // Right length?
     if (len != 26) {
-        cmd_err(ECMDINVAL);
+        reply_cmd_error(ECMDINVAL);
         return;
     }
 
     // Check cfg struct version
     if (data[i++] != SETTINGS_VER) {
-        cmd_err(EINVAL);
+        reply_cmd_error(EINVAL);
         return;
     }
 
@@ -313,13 +326,17 @@ void cmd_save_cfg()
 
 void cmd_cfg_default()
 {
-    int err;
-    err = settings_load_default();
-    if (err) {
-        reply_cmd_error((uint8_t) -err);
+    if (get_status(STATUS_TXBUSY)) {
+        reply_cmd_error(EBUSY);
     } else {
-        reload_config();
-        reply(CMD_CFG_DEFAULT, 0, NULL);
+        int err;
+        err = settings_load_default();
+        if (err) {
+            reply_cmd_error((uint8_t) -err);
+        } else {
+            reload_config();
+            reply(CMD_CFG_DEFAULT, 0, NULL);
+        }
     }
 }
 
