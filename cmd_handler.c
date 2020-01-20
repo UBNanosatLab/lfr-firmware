@@ -86,7 +86,8 @@ void cmd_tx_data(int len, uint8_t *data) {
 }
 
 void cmd_get_queue_depth() {
-    uint16_t depth = pkt_buf_depth(&tx_queue);
+    // Include the packet currently being sent
+    uint16_t depth = pkt_buf_depth(&tx_queue) + get_status(STATUS_TXBUSY) ? 1 : 0;
     uint8_t data[] = {depth >> 8, depth & 0xFF};
     reply(CMD_GET_QUEUE_DEPTH, sizeof(data), data);
 }
