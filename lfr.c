@@ -31,6 +31,7 @@
 #include "pkt_buf.h"
 #include "status.h"
 #include "user.h"
+#include "fm.h"
 
 // Backing buffer for tx_queue
 uint8_t __attribute__((persistent)) tx_backing_buf[16384] = {0};
@@ -42,6 +43,7 @@ struct pkt_buf tx_queue;
 
 volatile bool do_pong = false;
 volatile bool radio_irq = true;
+volatile bool fm_irq = true;
 
 void tx_cb(struct si446x_device *dev, int err);
 void rx_cb(struct si446x_device *dev, int err, int len, uint8_t *data);
@@ -382,9 +384,11 @@ int main(void)
         return err;
     }
 
+    fm_init();
+    fm_start();
+
     // Main loop
     while (true) {
-
         if (radio_irq) {
             radio_irq = false;
             err = si446x_update(&dev);
@@ -399,6 +403,9 @@ int main(void)
         } else if(uart_available()) {
                 char c = uart_getc();
                 parse_char(c);
+        } else if (fm_irq) {
+            fm_irq = false;
+            fm_step();
         } else {
                 LPM0; //enter LPM0 until an interrupt happens on the uart
         }
@@ -412,6 +419,14 @@ __interrupt void irq_isr()
     radio_irq = true;
     LPM4_EXIT; //This clears all the LPM bits, so it will leave the chip in run mode after the ISR
 }
+
+#pragma vector=TIMER3_A0_VECTOR
+__interrupt void fm_isr()
+{
+    fm_irq = true;
+    LPM4_EXIT;
+}
+
 
 #pragma vector=PORT2_VECTOR
 __interrupt void sync_word_isr()
