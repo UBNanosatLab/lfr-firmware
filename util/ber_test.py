@@ -119,7 +119,7 @@ def main():
     port = '/dev/ttyUSB0'
     baud = 115200
 
-    freq = 434.000e6
+    freq = 404.000e6
     tune_offset = 250e3
     samp_rate = 2e6
     sym_rate = 10e3
@@ -138,7 +138,7 @@ def main():
 
     gain_offset = usrp_chan_power - hw_atten
 
-    lvls = (numpy.linspace(-110.0, -100.0, 11) - gain_offset).tolist()
+    lvls = (numpy.linspace(-120.0, -110.0, 11) - gain_offset).tolist()
 
     ########################################
 
