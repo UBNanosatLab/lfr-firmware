@@ -30,7 +30,7 @@
 #define F_SMCLK         (8000000ul)
 
 
-#define SPI_CLKDIV      (F_SMCLK / 2000000L) //1 MHz SPI
+#define SPI_CLKDIV      (F_SMCLK / 8000000L) //8 MHz SPI
 #define FREQ_I2C (400000ul)
 
 volatile unsigned char _i2c_tx_byte_ctr; //bytes remaining this transaction
@@ -185,10 +185,8 @@ int fputs(const char *_ptr, register FILE *_fp)
 /**
  * @brief Initialize system clocks
  *
- * Sets DCO to 16 MHz to be used as a fallback,
- * sets main and subsystem clock dividers to 2, to run at 8 MHz,
- * configures the HFXT for operation with the 16 MHz crystal,
- * waits for it to stabilize, and switches the main clock to the HFXT.
+ * Sets DCO to 16 MHz
+ * Sets main clock to DCO, SMCLK to DCO/2
  *
  * Routes VLO to ACLK.
  */
@@ -198,12 +196,14 @@ void init_clock()
 
     CSCTL0 = CSKEY;                                         // Enable Access to CS Registers
 
-    // For 8 MHz operation on DCO
+    FRCTL0 = FWPW | NWAITS_1;                              // Set up FRAM wait states for 16 MHz operation, with FWPW password
+
+    // For 16 MHz operation on DCO
 
     CSCTL0_H = CSKEY_H;                                     // Unlock CS registers
-    CSCTL1 = DCOFSEL_6 ;                                    // Set DCO to 8MHz
+    CSCTL1 = DCORSEL | DCOFSEL_4 ;                        // Set DCO to 16MHz
     CSCTL2 = SELA__VLOCLK | SELS__DCOCLK | SELM__DCOCLK;    // ACLK from VLO, MCLK and SMCLK from DCO
-    CSCTL3 = DIVA__1 | DIVS__1 | DIVM__1;                   // MCLK, SMCLK 8MHz (DCO/1)
+    CSCTL3 = DIVA__1 | DIVS__2 | DIVM__1;                   // MCLK 16 MHz, SMCLK 8MHz (DCO/2)
 
     CSCTL0_H = 0;                                           // Lock CS registers
 }

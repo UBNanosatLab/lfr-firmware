@@ -31,7 +31,8 @@
 #define EUSCI_Ax_VECTOR EUSCI_A2_VECTOR
 #define USCI_Ax_ISR USCI_A2_ISR
 
-rbuf __attribute__((persistent)) ctxbuf = {.head=0, .tail=0};
+//TX buffer stored in SRAM to speed up access when throwing a large packet at the host
+rbuf ctxbuf = {.head=0, .tail=0};
 rbuf __attribute__((persistent)) crxbuf = {.head=0, .tail=0};
 
 void cmd_uart_init_pins(){
