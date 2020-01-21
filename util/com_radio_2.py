@@ -182,7 +182,7 @@ class Radio:
                 self.state = ParseState.SYNC_H
                 break
 
-        return (0, cmd, payload)
+        return (cmd, payload)
 
     def get_cfg(self):
         pkt = chr(Command.GET_CFG.value)
@@ -204,10 +204,10 @@ class Radio:
 
             cfg = {}
 
-            cfg['cfg_ver'], cfg['freq'], cfg['modem_config'], \
+            cfg['cfg_ver'], cfg['rx_freq'], cfg['tx_freq'], cfg['modem_config'], \
             cfg['txco_vpull'], cfg['tx_gate_bias'], cfg['tx_vdd'], \
             cfg['pa_ilimit'], cfg['tx_vdd_delay'], cfg['flags'],\
-            cfg['callsign'] = struct.unpack("!BIBHHHHHH8s", pay)
+            cfg['callsign'] = struct.unpack("!BIIBHHHHHH8s", pay)
 
             return cfg
         else:
@@ -217,8 +217,8 @@ class Radio:
 
         cfg = dict(cfg_in)
 
-        data = struct.pack("!BIBHHHHHH8s", \
-            cfg['cfg_ver'], cfg['freq'], cfg['modem_config'], \
+        data = struct.pack("!BIIBHHHHHH8s", \
+            cfg['cfg_ver'], cfg['rx_freq'], cfg['tx_freq'], cfg['modem_config'], \
             cfg['txco_vpull'], cfg['tx_gate_bias'], cfg['tx_vdd'], \
             cfg['pa_ilimit'], cfg['tx_vdd_delay'], cfg['flags'], \
             cfg['callsign'])
