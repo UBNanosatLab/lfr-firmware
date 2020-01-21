@@ -181,6 +181,16 @@ bool validate_length(uint8_t cmd, uint8_t len) {
       return len == 4;
     case CMD_SET_CFG:
           return len > 0; // Allow any non-zero here, we check it in the cmd callback
+    // Allow anything, up to user to check
+    case CMD_USER0:
+    case CMD_USER1:
+    case CMD_USER2:
+    case CMD_USER3:
+    case CMD_USER4:
+    case CMD_USER5:
+    case CMD_USER6:
+    case CMD_USER7:
+        return true;
     default:
       return len == 0;
   }

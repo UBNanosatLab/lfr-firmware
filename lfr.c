@@ -385,7 +385,6 @@ int main(void)
     }
 
     fm_init();
-    fm_start();
 
     // Main loop
     while (true) {

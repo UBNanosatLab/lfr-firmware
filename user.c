@@ -20,6 +20,7 @@
 #include "cmd_parser.h"
 #include "cmd_handler.h"
 #include "user.h"
+#include "fm.h"
 
 #include "error.h"
 #include "lfr.h"
@@ -89,6 +90,11 @@ void cmd_user(uint8_t cmd, uint8_t len, uint8_t *data)
 
     case 4:
         tx_dead_key();
+        break;
+    case 5:
+        fm_set_msg(len, data);
+        fm_start();
+        reply(CMD_USER5, 0, NULL);
         break;
     default:
         cmd_err(ECMDINVAL);
