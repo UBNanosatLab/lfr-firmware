@@ -238,6 +238,11 @@ int reload_config()
         return err;
     }
 
+    err = si446x_data_whitening(&dev, settings.flags & FLAG_WHITEN);
+    if (err) {
+        return err;
+    }
+
     err = set_modem_config(settings.modem_config);
     if (err) {
         return err;

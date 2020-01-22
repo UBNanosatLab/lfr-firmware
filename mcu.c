@@ -24,7 +24,7 @@
 #include "error.h"
 
 
-#define CYC_PER_US      8
+#define CYC_PER_US      16
 #define FOR_LOOP_CYC    4 // guessing here...
 #define F_CPU            8000000L
 //#define F_SMCLK         (4000000ul)
