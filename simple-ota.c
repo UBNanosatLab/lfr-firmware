@@ -5,6 +5,7 @@
  *      Author: brian
  */
 
+#include <msp430.h>
 #include "simple-ota.h"
 #include "mcu.h"
 #include "lfr.h"
@@ -93,6 +94,32 @@ void ota_handler(uint8_t* pkt, unsigned int len){
     }
 }
 
+// Pulse GPIOs high for twenty half-second ticks
+#define GPIO_PULSE_TICKS 19
+volatile uint8_t gpio_0_pulse_counter=0;
+volatile uint8_t gpio_1_pulse_counter=0;
+
+void start_gpio_timer(uint8_t pin){
+
+    if(pin == 0){
+        gpio_0_pulse_counter = GPIO_PULSE_TICKS;
+    } else if(pin == 1){
+        gpio_1_pulse_counter = GPIO_PULSE_TICKS;
+    } else return;
+
+    if(! (TA2CTL & MC_3)){ //if the timer is stopped
+        // 8 MHz clock, div by 64, count to 62500 gives 500 ms period
+        TA2CCR0 = 62500;
+        // Enable compare interrupt for CCR0
+        TA2CCTL0 = CCIE;
+        // Set expanded divider to 8
+        TA2EX0 = TAIDEX__8;
+        // source from SMCLK, div by 8, count up to CCR0 value, clear state
+        TA2CTL = TASSEL__SMCLK | ID__8 | MC__UP | TACLR;
+    }
+
+}
+
 void handle_gpio(uint8_t pin, uint8_t mode, uint8_t value){
     uint8_t iopin=0;
     if(pin == 0) {
@@ -113,4 +140,34 @@ void handle_gpio(uint8_t pin, uint8_t mode, uint8_t value){
     } else {
         gpio_config(iopin, mode);
     }
+    //For balloon cut-down, only drive output high for a finite duration
+    if( mode == OUTPUT && value == 1){
+        start_gpio_timer(pin);
+    }
+}
+
+
+#pragma vector=TIMER2_A0_VECTOR //CCR0 interrupt for TA2
+__interrupt void gpio_pulse_isr(){
+
+    if(!(gpio_0_pulse_counter || gpio_0_pulse_counter)){
+        TA2CTL &= ~MC_3; //set MC bits to zero, i.e. put counter into sleep mode
+    }
+
+    if(gpio_0_pulse_counter){
+        gpio_0_pulse_counter--;
+    } else {
+        //at timeout, return IO0 to hi-Z
+        //gpio_config(EXT_IO0, INPUT);
+        gpio_write(EXT_IO0, 0);
+    }
+
+    if(gpio_1_pulse_counter){
+       gpio_1_pulse_counter--;
+    } else {
+        //at timeout, return IO1 to hi-Z
+        //gpio_config(EXT_IO1, INPUT);
+        gpio_write(EXT_IO1, 0);
+    }
+
 }

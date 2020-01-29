@@ -37,5 +37,4 @@
 
 void ota_handler(uint8_t* pkt, unsigned int len);
 
-
 #endif /* SIMPLE_OTA_H_ */

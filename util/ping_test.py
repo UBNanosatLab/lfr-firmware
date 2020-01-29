@@ -37,9 +37,9 @@ def crc( data):
 #Ping command
 #data = b'\xDBLinkSat=BestSat\x00\x00'
 #Turn GPIO 0 off
-data = b'\xDBLinkSat=BestSat\x01\x03\x00\x01\x00'
-#Turn GPIO 0 on
 #data = b'\xDBLinkSat=BestSat\x01\x03\x00\x01\x00'
+#Turn GPIO 0 on
+data = b'\xDBLinkSat=BestSat\x01\x03\x00\x01\x01'
 
 lfr=Radio('/dev/ttyUSB0')
 cksum = lfr.checksum(data[16:])
