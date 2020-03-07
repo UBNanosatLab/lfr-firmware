@@ -243,6 +243,7 @@ void mcu_init()
 
     init_clock();
     bc_uart_init();
+    adc_init();
 
     __disable_interrupt();
 //    P8IES &=  ~BIT1;

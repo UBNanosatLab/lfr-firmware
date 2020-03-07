@@ -28,6 +28,8 @@
 #define GPIO2           0x36
 #define GPIO3           0x35
 #define TX_ACT_PIN      0x72
+#define PA_TEMP_PIN     0x40
+#define PA_TEMP_ACHAN   8       //ADC channel 8
 #define PA_IMON_PIN     0x42
 #define PA_IMON_ACHAN   10      //ADC channel 10
 #define PA_VMON_PIN     0x14

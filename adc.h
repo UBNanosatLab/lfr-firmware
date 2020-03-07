@@ -8,6 +8,7 @@
 #ifndef ADC_H_
 #define ADC_H_
 
+#define ADC_CHAN_TEMP (0x1E)
 void adc_init();
 
 int gpio_to_adc(unsigned char pin);

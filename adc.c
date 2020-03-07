@@ -41,6 +41,7 @@ void adc_init(){
     ADC12CTL0 = ADC12SHT0_4 | ADC12ON;
     ADC12CTL1 = ADC12SHP;                   // ADCCLK = MODOSC; sampling timer
     ADC12CTL2 |= ADC12RES_2;                // 12-bit conversion results
+    ADC12CTL3 |= ADC12TCMAP;                // Connect internal temperature sensor to channel 30d/1Eh
     //ADC12IER0 |= ADC12IE0;                  // Enable ADC conv complete interrupt
     ADC12MCTL0 |= ADC12VRSEL_1;             //Select the internal reference as VREF
 
@@ -77,8 +78,8 @@ int adc_to_gpio(unsigned char channel){
  */
 int adc_read(unsigned int chan){
     unsigned int adcval;
-    //TODO: handle non-pin inputs like the temperature sensor instead of rejecting them.  Don't wanna read the manual now.
-    if(!(chan < sizeof(analog_pins))){
+    // channel 0x1E is connected to the internal temp sensor; allow that or anything in the gpio-analog pin map
+    if(!(chan == ADC_CHAN_TEMP || chan < sizeof(analog_pins))){
         return -EINVAL;
     }
     ADC12MCTL0 &= ~(BIT0|BIT1|BIT2|BIT3|BIT4); // clear the channel select bits in ADC12MCTL0
