@@ -469,7 +469,6 @@ if __name__ == '__main__':
     elif (sys.argv[2] == 'get_temp' and len(sys.argv) == 3):
         temps = radio.get_temps()
         print("MCU temp: " + str(temps['mcu_temp']*0.01) + " PA temp: " + str(temps['pa_temp']*0.01))
-        print("MCU temp: " + hex(temps['mcu_temp']) + " PA temp: " + hex(temps['pa_temp']))
 
     else:
         print('Usage: python3', sys.argv[0], '/dev/<RADIO_UART> [rx | tx n | get-cfg | load-cfg | save-cfg | default-cfg | tx-psr | tx-abort | reset]')
