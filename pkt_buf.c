@@ -16,6 +16,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <string.h>
+
 #include "pkt_buf.h"
 #include "error.h"
 
@@ -76,7 +78,7 @@ int pkt_buf_enqueue(struct pkt_buf *buf, int len, uint8_t *data)
         } else {
             memcpy(buf->head, data, rem);
             buf->head = buf->base;
-            memcpy(buf->head, data, len - rem);
+            memcpy(buf->head, data + rem, len - rem);
             buf->head += len - rem;
         }
     } else {
