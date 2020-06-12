@@ -29,6 +29,7 @@
 #define OUTPUT 0x1
 #define INPUT_PULLUP 0x30
 #define INPUT_PULLDOWN 0x20
+#define INPUT_ANALOG 0x40
 
 #define RISING 0x00
 #define FALLING 0x01

@@ -117,6 +117,12 @@ void cmd_rx_data();
 void cmd_get_queue_depth();
 
 /**
+ * Get the current temperatures
+ * Returns two signed 16-bit integers representing PA temperature and MCU temperature in 0.01C units
+ */
+void cmd_get_temps();
+
+/**
  * Send an error back
  * @param err the (positive) error code
  */

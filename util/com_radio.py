@@ -11,6 +11,8 @@ import json
 
 from enum import Enum
 
+from random import randint
+
 SYNCWORD_H = 0xBE
 SYNCWORD_L = 0xEF
 
@@ -41,6 +43,7 @@ class Command(Enum):
     SET_TXPWR = 0x26
 
     CMD_GET_QUEUE_DEPTH = 0x32
+    GET_TEMPS = 0x33
 
     INTERNALERROR = 0x7E
     ERROR = 0x7F
@@ -377,11 +380,30 @@ class Radio:
         else:
             raise Exception('Unexpected response: ' + str((hex(cmd), pay)))
 
+    def get_temps(self):
+        self.send_pkt(Command.GET_TEMPS)
+
+        (cmd, pay) = self.recv()
+
+        if cmd  == (Command.ERROR.value | Command.REPLY.value):
+            err = RadioException(pay[0])
+            raise err
+
+        elif cmd == (Command.GET_TEMPS.value | Command.REPLY.value):
+            temps = {}
+            temps['pa_temp'], temps['mcu_temp'] = struct.unpack("!hh", pay)
+            return temps
+
+        else:
+            raise Exception('Unexpected response: ' + str((hex(cmd), pay)))
+
+ 
+
     def close(self):
         self.ser.close()
 
 def usage():
-    print('Usage: python3', sys.argv[0], '/dev/<RADIO_UART> [rx | tx n | get-cfg | load-cfg | save-cfg | default-cfg | tx-psr | tx-abort | reset | nop]')
+    print('Usage: python3', sys.argv[0], '/dev/<RADIO_UART> [rx | tx n | get-cfg | load-cfg | save-cfg | default-cfg | tx-psr | tx-abort | reset | nop | get_temp]')
 
 if __name__ == '__main__':
 
@@ -402,7 +424,9 @@ if __name__ == '__main__':
     elif (sys.argv[2] == 'tx' and len(sys.argv) == 4):
         sleep(1)
         for i in range(int(sys.argv[3])):
-            data = ('KC2QOL ' + str(i + 1) + ' ').ljust(255, 'x')
+            data = ('KC2QOL ' + str(i + 1) + ' ')
+            data = data + ''.join([chr(randint(0x20, 0x7f)) for _ in range(0, 255 - len(data))])
+#            data = ('KC2QOL ' + str(i + 1) + ' ').ljust(255, 'x')
             print('TX>', data)
             radio.tx(data)
             print('Sent ' + str(len(data)) + ' byte(s)')
@@ -441,6 +465,10 @@ if __name__ == '__main__':
 
     elif (sys.argv[2] == 'nop' and len(sys.argv) == 3):
         radio.nop()
+
+    elif (sys.argv[2] == 'get_temp' and len(sys.argv) == 3):
+        temps = radio.get_temps()
+        print("MCU temp: " + str(temps['mcu_temp']*0.01) + " PA temp: " + str(temps['pa_temp']*0.01))
 
     else:
         print('Usage: python3', sys.argv[0], '/dev/<RADIO_UART> [rx | tx n | get-cfg | load-cfg | save-cfg | default-cfg | tx-psr | tx-abort | reset]')

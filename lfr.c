@@ -30,6 +30,7 @@
 #include "settings.h"
 #include "pkt_buf.h"
 #include "status.h"
+#include "adc.h"
 
 // Backing buffer for tx_queue
 uint8_t __attribute__((persistent)) tx_backing_buf[16384] = {0};
@@ -234,6 +235,11 @@ int reload_config()
     }
 
     err = si446x_check_crc(&dev, settings.flags & FLAG_CRC_CHECK);
+    if (err) {
+        return err;
+    }
+
+    err = si446x_data_whitening(&dev, settings.flags & FLAG_WHITEN);
     if (err) {
         return err;
     }

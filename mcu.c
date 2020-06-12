@@ -22,16 +22,17 @@
 #include <stdbool.h>
 #include "mcu.h"
 #include "error.h"
+#include "adc.h"
 
 
-#define CYC_PER_US      8
+#define CYC_PER_US      16
 #define FOR_LOOP_CYC    4 // guessing here...
 #define F_CPU            8000000L
 //#define F_SMCLK         (4000000ul)
 #define F_SMCLK         (8000000ul)
 
 
-#define SPI_CLKDIV      (F_SMCLK / 2000000L) //1 MHz SPI
+#define SPI_CLKDIV      (F_SMCLK / 8000000L) //8 MHz SPI
 #define FREQ_I2C (400000ul)
 
 volatile unsigned char _i2c_tx_byte_ctr; //bytes remaining this transaction
@@ -129,6 +130,32 @@ static volatile unsigned char *const gpio_ies_for_port[] =
     &P8IES,
 };
 
+static volatile unsigned char *const gpio_sel1_for_port[] =
+{
+    0x0000,
+    &P1SEL1,
+    &P2SEL1,
+    &P3SEL1,
+    &P4SEL1,
+    &P5SEL1,
+    &P6SEL1,
+    &P7SEL1,
+    &P8SEL1,
+};
+
+static volatile unsigned char *const gpio_sel0_for_port[] =
+{
+    0x0000,
+    &P1SEL0,
+    &P2SEL0,
+    &P3SEL0,
+    &P4SEL0,
+    &P5SEL0,
+    &P6SEL0,
+    &P7SEL0,
+    &P8SEL0,
+};
+
 /**
  * @brief Initialize the backchannel/debug UART
  *
@@ -187,10 +214,8 @@ int fputs(const char *_ptr, register FILE *_fp)
 /**
  * @brief Initialize system clocks
  *
- * Sets DCO to 16 MHz to be used as a fallback,
- * sets main and subsystem clock dividers to 2, to run at 8 MHz,
- * configures the HFXT for operation with the 16 MHz crystal,
- * waits for it to stabilize, and switches the main clock to the HFXT.
+ * Sets DCO to 16 MHz
+ * Sets main clock to DCO, SMCLK to DCO/2
  *
  * Routes VLO to ACLK.
  */
@@ -200,12 +225,14 @@ void init_clock()
 
     CSCTL0 = CSKEY;                                         // Enable Access to CS Registers
 
-    // For 8 MHz operation on DCO
+    FRCTL0 = FWPW | NWAITS_1;                              // Set up FRAM wait states for 16 MHz operation, with FWPW password
+
+    // For 16 MHz operation on DCO
 
     CSCTL0_H = CSKEY_H;                                     // Unlock CS registers
-    CSCTL1 = DCOFSEL_6 ;                                    // Set DCO to 8MHz
+    CSCTL1 = DCORSEL | DCOFSEL_4 ;                        // Set DCO to 16MHz
     CSCTL2 = SELA__VLOCLK | SELS__DCOCLK | SELM__DCOCLK;    // ACLK from VLO, MCLK and SMCLK from DCO
-    CSCTL3 = DIVA__1 | DIVS__1 | DIVM__1;                   // MCLK, SMCLK 8MHz (DCO/1)
+    CSCTL3 = DIVA__1 | DIVS__2 | DIVM__1;                   // MCLK 16 MHz, SMCLK 8MHz (DCO/2)
 
     CSCTL0_H = 0;                                           // Lock CS registers
 }
@@ -216,6 +243,7 @@ void mcu_init()
 
     init_clock();
     bc_uart_init();
+    adc_init();
 
     __disable_interrupt();
 //    P8IES &=  ~BIT1;
@@ -417,6 +445,7 @@ void gpio_config(int pin, int mode)
     unsigned int pin_num = (pin >> 0) & 0x07;
     unsigned char pull_enable = (mode & 0x20);
     unsigned char pull_direction = (mode & 0x10);
+    unsigned char analog = (mode & 0x40);
 
     /* Set pin direction */
     char cur_dir = *gpio_dir_for_port[port];
@@ -431,8 +460,20 @@ void gpio_config(int pin, int mode)
 
     /* Enable or disable pull up/down resistor */
     char cur_ren = *gpio_ren_for_port[port];
-
     *gpio_ren_for_port[port] = pull_enable ? cur_ren | (1 << pin_num) : cur_ren & ~(1 << pin_num);
+
+    //Configure pin mux: 00 for digital GPIO, 11 for analog (assuming pin has analog, otherwise that's some random peripheral
+    char cur_sel0 = *gpio_sel0_for_port[port];
+    char cur_sel1 = *gpio_sel1_for_port[port];
+    //make sure we're not muxing the pin to some random peripheral
+    if(analog && (gpio_to_adc(pin) != -EINVAL)){
+        *gpio_sel0_for_port[port] = cur_sel0 | (1 << pin_num);
+        *gpio_sel1_for_port[port] = cur_sel1 | (1 << pin_num);
+    } else {
+        *gpio_sel0_for_port[port] = cur_sel0 & ~(1 << pin_num);
+        *gpio_sel1_for_port[port] = cur_sel1 & ~(1 << pin_num);
+    }
+
 }
 
 /**

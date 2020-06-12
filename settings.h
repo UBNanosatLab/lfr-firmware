@@ -25,6 +25,7 @@
 #define SETTINGS_VER 0x02
 
 #define FLAG_CRC_CHECK  0x0001
+#define FLAG_WHITEN     0x0002
 
 #define FLAG_MOD_MASK   0x000C
 #define FLAG_MOD_GFSK   0x0000

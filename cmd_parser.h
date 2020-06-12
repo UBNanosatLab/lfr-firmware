@@ -52,6 +52,7 @@
 //#define CMD_GET_STATUS          0x30
 //#define CMD_CLEAR_STATUS        0x31
 #define CMD_GET_QUEUE_DEPTH     0x32
+#define CMD_GET_TEMPS           0x33
 
 /* Peripheral Group */
 //#define CMD_GPIO_WRITE          0x40

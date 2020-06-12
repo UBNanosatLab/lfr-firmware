@@ -29,6 +29,8 @@
 #include "msp430_uart.h"
 #include "settings.h"
 #include "status.h"
+#include "adc.h"
+#include "pins.h"
 
 void cmd_nop() {
     reply(CMD_NOP, 0, NULL);
@@ -321,6 +323,29 @@ void cmd_cfg_default()
         reload_config();
         reply(CMD_CFG_DEFAULT, 0, NULL);
     }
+}
+
+//Calibration values for internal temp sensor from TLV
+#define ADC_2V5_30C_CAL (*(int*) 0x01A22)
+#define ADC_2V5_85C_CAL (*(int*) 0x01A24)
+
+void cmd_get_temps(){
+    int32_t mcu_temp_scale = (8500L-3000L)/(ADC_2V5_85C_CAL - ADC_2V5_30C_CAL);
+    int16_t mcu_temp = 0;
+    int16_t pa_temp = 0;
+    mcu_temp = adc_read(ADC_CHAN_TEMP);
+    pa_temp = adc_read(PA_TEMP_ACHAN);
+    mcu_temp = 3000+(mcu_temp - ADC_2V5_30C_CAL) * mcu_temp_scale;
+    //TMP235, 10mV/C, 500mV at 0C, so 4095 means 2.5V means 200C, 0 means 0V means -50C
+    pa_temp =((pa_temp * 25000L)>>12) - 5000;
+    uint8_t data[4] = {
+                       pa_temp >> 8,
+                       pa_temp & 0xFF,
+
+                       mcu_temp >> 8,
+                       mcu_temp & 0xFF
+    };
+    reply(CMD_GET_TEMPS, 4, (uint8_t*) data);
 }
 
 void cmd_err(int err) {
