@@ -39,6 +39,7 @@ volatile unsigned char _i2c_tx_byte_ctr; //bytes remaining this transaction
 unsigned char _i2c_tx_bytes; //bytes to send this transaction
 unsigned char *_i2c_tx_data; //pointer to buffer of data to send
 volatile bool _i2c_did_nack = false;
+volatile bool _i2c_tx_done = false;
 
 static volatile unsigned char *const gpio_dir_for_port[] =
 {
@@ -321,10 +322,11 @@ int i2c_write(unsigned char slave_addr, unsigned char *buf, unsigned char len){
     _i2c_tx_bytes = _i2c_tx_byte_ctr = len;
     _i2c_tx_data = buf;
     _i2c_did_nack = false;
+    _i2c_tx_done = false;
     UCB2CTLW0 |= UCTR | UCTXSTT;        // I2C TX, start condition
     unsigned short sr;
     sr = __get_SR_register();         //store existing interrupt state
-    while (_i2c_tx_byte_ctr && !_i2c_did_nack) {
+    while (!_i2c_tx_done && !_i2c_did_nack) {
         __bis_SR_register(LPM0_bits | GIE);  //go into LPM0 until data is sent
     }
     __set_interrupt_state(sr);          //restore previous interrupt state
@@ -375,6 +377,8 @@ void __attribute__ ((interrupt(EUSCI_B2_VECTOR))) USCI_B2_ISR (void)
             {
                 UCB2CTLW0 |= UCTXSTP;       // send stop condition
                 UCB2IFG &= ~UCTXIFG;        // Clear USCI_B2 TX int flag
+                _i2c_tx_done = true;        // We've sent all the data
+                                            // write function checks for stop
                 __bic_SR_register_on_exit(LPM0_bits); // Exit LPM0
             }
             break;
