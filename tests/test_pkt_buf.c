@@ -1,3 +1,5 @@
+#if 0
+
 #include <stdint.h>
 #include <stdio.h>
 
@@ -83,3 +85,5 @@ int main(int argc, char const *argv[])
 {
     return test_stress();
 }
+
+#endif
