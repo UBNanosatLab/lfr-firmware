@@ -22,6 +22,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+// Called once at startup
+void user_init();
+
 // Called with cmd = [0,7] when CMD_USER0..CMD_USER7 are received
 void cmd_user(uint8_t cmd, uint8_t len, uint8_t *data);
 

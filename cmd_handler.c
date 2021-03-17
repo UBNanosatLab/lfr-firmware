@@ -152,6 +152,18 @@ void cmd_tx_psr()
     int err;
     int attempts;
 
+    // So I think this is the packet handler causing problems.
+    // For some reason, the Si446x needs to be reset to disable the packet
+    // handler. Failure to do this will result in the packet handler exiting
+    // the transmit state automatically after about 250 ms. I'm not entirely
+    // convinced this is indeed the packet handler, but it only appears to
+    // happen after sending a data packet.
+
+    err = reset_si446x();
+    if (err) {
+        return err;
+    }
+
     if ((settings.flags & FLAG_MOD_MASK) == FLAG_MOD_CW) {
         err = si446x_set_mod_type(&dev, MOD_SRC_RAND | MOD_TYPE_CW);
     } else if ((settings.flags & FLAG_MOD_MASK) == FLAG_MOD_FSK) {

@@ -42,7 +42,7 @@ struct si446x_device dev;
 struct pkt_buf tx_queue;
 
 volatile bool do_pong = false;
-volatile bool radio_irq = true;
+volatile bool radio_irq = false;
 volatile bool fm_irq = true;
 
 void tx_cb(struct si446x_device *dev, int err);
@@ -140,6 +140,7 @@ int send_w_retry(int len, uint8_t *buf)
 
 void tx_cb(struct si446x_device *dev, int err)
 {
+
     if (err) {
         internal_error((uint8_t) -err);
     }
@@ -385,11 +386,13 @@ int main(void)
     }
 
     fm_init();
+    user_init();
 
     // Main loop
     while (true) {
         if (radio_irq) {
             radio_irq = false;
+            printf("IRQ\n");
             err = si446x_update(&dev);
             if (err) {
                 printf("Err: %d", err);

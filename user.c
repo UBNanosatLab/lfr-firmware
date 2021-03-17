@@ -29,12 +29,28 @@ const char *hello = "Hello, world!";
 
 uint32_t ticks = 0;
 
+void user_init() {
+
+}
+
 void tx_dead_key()
 {
     int err;
     int attempts;
 
-    err = si446x_set_mod_type(&dev, MOD_SRC_PIN | MOD_TYPE_CW);
+    // So I think this is the packet handler causing problems.
+    // For some reason, the Si446x needs to be reset to disable the packet
+    // handler. Failure to do this will result in the packet handler exiting
+    // the transmit state automatically after about 250 ms. I'm not entirely
+    // convinced this is indeed the packet handler, but it only appears to
+    // happen after sending a data packet.
+
+    err = reset_si446x();
+    if (err) {
+        return err;
+    }
+
+    err = si446x_set_mod_type(&dev, MOD_SRC_RAND | MOD_TYPE_CW);
 
     if (err) {
         reply_cmd_error((uint8_t) -err);
@@ -90,6 +106,7 @@ void cmd_user(uint8_t cmd, uint8_t len, uint8_t *data)
 
     case 4:
         tx_dead_key();
+        reply(CMD_USER4, 0, NULL);
         break;
     case 5:
         fm_set_msg(len, data);

@@ -25,8 +25,6 @@ static uint8_t snd_msg[255];
 static uint8_t snd_msg_len = 0;
 static int snd_msg_index = 0;
 
-
-
 void fm_step()
 {
     while (snd_duration <= 0) {
@@ -35,18 +33,33 @@ void fm_step()
         // Careful with 8bit rollover here
         if (snd_msg_index >= snd_msg_len) {
             // Done with msg
-            set_dac_output(TCXO_CHAN, settings.tcxo_vpull);
+            si446x_set_freq_offset(&dev, 0);
             fm_stop();
 
             return;
         }
 
-        snd_index = snd_offsets[snd_msg[snd_msg_index]];
-        snd_duration = snd_durations[snd_msg[snd_msg_index]];
+        if (snd_msg[snd_msg_index] < sizeof(snd_offsets) / sizeof(*snd_offsets)) {
+            snd_index = snd_offsets[snd_msg[snd_msg_index]];
+            snd_duration = snd_durations[snd_msg[snd_msg_index]];
+        } else {
+            // Skip unknown sounds
+        }
+
         snd_msg_index++;
     }
 
-    set_dac_output(TCXO_CHAN, (((uint16_t)snd[snd_index]) << 3) + 400);
+    int8_t samp = snd[snd_index] - 0x78;
+
+    //    uint8_t outdiv = 8;
+    //    int16_t offset_freq =  ((int16_t)samp - 0x78) * 20;
+    //    int16_t offset_counts =  outdiv * ((int32_t) offset_freq << 18) / XTAL_FREQ;
+    // Each count is about 12.4 Hz at 435 MHz
+    // So 127 * 2 * 12.4 Hz = 3150 Hz
+    int16_t offset_counts = 2 * samp; // about 3 kHz deviation
+
+    si446x_set_freq_offset(&dev, offset_counts);
+
     snd_duration--;
 
     if (++snd_index >= sizeof(snd) / sizeof(*snd))
@@ -79,7 +92,19 @@ static int tx_dead_key()
     int err;
     int attempts;
 
-    err = si446x_set_mod_type(&dev, MOD_SRC_PIN | MOD_TYPE_CW);
+    // So I think this is the packet handler causing problems.
+    // For some reason, the Si446x needs to be reset to disable the packet
+    // handler. Failure to do this will result in the packet handler exiting
+    // the transmit state automatically after about 250 ms. I'm not entirely
+    // convinced this is indeed the packet handler, but it only appears to
+    // happen after sending a data packet.
+
+    err = reset_si446x();
+    if (err) {
+        return err;
+    }
+
+    err = si446x_set_mod_type(&dev, MOD_SRC_RAND | MOD_TYPE_CW);
 
     if (err) {
         return err;
