@@ -358,7 +358,6 @@ void __attribute__ ((interrupt(EUSCI_B2_VECTOR))) USCI_B2_ISR (void)
 #error Compiler not supported!
 #endif
 {
-    fputc('i', NULL);
     switch(__even_in_range(UCB2IV, USCI_I2C_UCBIT9IFG))
     {
         case USCI_NONE:          break;     // Vector 0: No interrupts
@@ -391,7 +390,6 @@ void __attribute__ ((interrupt(EUSCI_B2_VECTOR))) USCI_B2_ISR (void)
                 UCB2IFG &= ~UCTXIFG;        // Clear USCI_B2 TX int flag
                 _i2c_tx_done = true;        // We've sent all the data
                                             // write function checks for stop
-                fputc('d', NULL);
                 __bic_SR_register_on_exit(LPM0_bits); // Exit LPM0
             }
             break;
