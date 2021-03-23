@@ -23,13 +23,13 @@
 #include "radio.h"
 
 #define DEFAULT_SETTINGS {\
-    .freq = 434000000L,   \
-    .modem_config = DATA_10K_DEV_5K,    \
+    .freq = 432500000L,   \
+    .modem_config = DATA_10K_DEV_2K5,    \
     .tcxo_vpull = 1256,   \
     .tx_gate_bias = 500,  /* 0.5V bias is enough to see in testing, but very very low output power */ \
     .tx_vdd = 5000,       /* 5V will wake the PA up, but dissipate little heat even with a lot of gate bias */ \
     .pa_ilimit = 1000,    /* 1A is a bit more than the RA07H4047M draws at Vdd=5V, Vgg=3.5V, Pin=13dBm */ \
-    .tx_vdd_delay = 2000, /* 2ms is plenty for the example 5V/1A values */ \
+    .tx_vdd_delay = 5000, /* ? 2ms is plenty for the example 5V/1A values */ \
     .flags = FLAG_MOD_GFSK | FLAG_CRC_CHECK,\
     .callsign = "NOCALL  "\
 };

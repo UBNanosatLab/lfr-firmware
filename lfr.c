@@ -109,6 +109,7 @@ int send_w_retry(int len, uint8_t *buf)
     int attempts;
     int err;
 
+    si446x_idle(&dev);
     pre_transmit();
 
     for (attempts = 0; attempts < 3; attempts++) {
@@ -208,8 +209,8 @@ void rx_cb(struct si446x_device *dev, int err, int len, uint8_t *data)
         reply(CMD_RXDATA, len, data);
     }
     set_status(STATUS_TXBUSY, false);
-    send_reply_to_host();
     si446x_recv_async(dev, 255, buf, rx_cb);
+    send_reply_to_host();
 }
 
 void error(int err, char *file, int line) {
@@ -288,7 +289,7 @@ int config_si446x()
         return err;
     }
 
-    err = si446x_cfg_gpio(&dev, GPIO_SYNC_WORD_DETECT, GPIO_TX_DATA, GPIO_TX_DATA_CLK, GPIO_TX_STATE);
+    err = si446x_cfg_gpio(&dev, GPIO_SYNC_WORD_DETECT, GPIO_RX_STATE, GPIO_TX_DATA_CLK, GPIO_TX_STATE);
     if (err) {
         return err;
     }
@@ -404,9 +405,8 @@ int main(void)
         } else if(uart_available()) {
                 char c = uart_getc();
                 parse_char(c);
-        } else {
-                LPM0; //enter LPM0 until an interrupt happens on the uart
         }
+        // Don't bother sleeping
     }
 }
 

@@ -135,6 +135,7 @@ void __attribute__ ((interrupt(EUSCI_Ax_VECTOR))) USCI_Ax_ISR (void)
         case USCI_NONE: break;
         case USCI_UART_UCRXIFG:
             //UCAxTXBUF = UCAxRXBUF;
+            fputc('u', 0);
             //move the received byte into the RX ring buffer
             rbuf_put(&rxbuf, UCAxRXBUF);
             break;

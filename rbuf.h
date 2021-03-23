@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#define RBUF_SIZE 128
+#define RBUF_SIZE 512
 #include <stdint.h>
 #include "error.h"
 

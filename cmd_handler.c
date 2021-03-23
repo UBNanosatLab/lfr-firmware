@@ -84,6 +84,7 @@ void cmd_tx_data(int len, uint8_t *data) {
 }
 
 void cmd_get_queue_depth() {
+    fputc('Q', NULL);
     uint16_t depth = pkt_buf_depth(&tx_queue);
     uint8_t data[] = {depth >> 8, depth & 0xFF};
     reply(CMD_GET_QUEUE_DEPTH, sizeof(data), data);
@@ -112,7 +113,7 @@ void cmd_abort_tx()
         return;
     }
 
-    err = si446x_abort_tx(&dev);
+    err = si446x_idle(&dev);
     if (err) {
         reply_cmd_error((uint8_t) -err);
         return;
