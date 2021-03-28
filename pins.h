@@ -41,6 +41,8 @@
 #define DAC_nPWR_PIN    0x73
 #define SDA_PIN         0x70
 #define SCL_PIN         0x71
+#define EXT_IO0         0x40
+#define EXT_IO1         0x41
 
 #define GATE_CHAN   0
 #define TCXO_CHAN   1
