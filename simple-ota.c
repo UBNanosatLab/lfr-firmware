@@ -8,43 +8,38 @@
 #include "simple-ota.h"
 #include "mcu.h"
 #include "lfr.h"
+#include "status.h"
+#include "amp.h"
+#include "adc.h"
+#include "settings.h"
 #include "lib446x/si446x.h"
 #include "cmd_parser.h"
+#include "cmd_handler.h"
 #include "checksum.h"
 #include "pins.h"
 
 uint8_t ota_key[] = OTA_KEY;
 void handle_gpio(uint8_t pin, uint8_t mode, uint8_t value);
+void send_pong();
+void handle_reset();
+void handle_adc(uint8_t chan);
+void handle_tx_pwr(uint16_t gate_bias);
 
-void send_pong(){
-    sys_stat |= FLAG_TXBUSY;
-    uint8_t resp[] = {
-            'P',
-            'O',
-            'I',
-            'O',
-            'I',
-            'N',
-            'G',
-        };
-    //TODO: handle errors from this?
-    send_w_retry(sizeof(resp), resp);
-}
-
-int get_ota_cmd_payload_len(uint8_t cmd){
+bool validate_ota_cmd(uint8_t cmd, uint8_t len)
+{
     switch(cmd){
     case OTA_CMD_PING:
-        return 0;
+        return len == 0;
+    case OTA_CMD_RESET_LFR:
+        return len == 0;
     case OTA_CMD_GPIO:
-        return 3;
-    case OTA_CMD_TX_INHIBIT:
-    case OTA_CMD_TX_RELEASE:
-    case OTA_CMD_GET_RESETS:
-    case OTA_CMD_GET_WDT_RESETS:
-    case OTA_CMD_GET_UPTIME:
-        return -ENOTIMPL;
+        return len == 3;
+    case OTA_CMD_ADC:
+        return len == 1;
+    case OTA_CMD_SET_TX_PWR:
+        return len == 1;
     default:
-        return -EINVAL;
+        return false; // Invalid command
     }
 }
 
@@ -69,10 +64,12 @@ void ota_handler(uint8_t* pkt, unsigned int len){
     }
     //check that the command is valid and len matches the expected packet length for that command
     cmd = pkt[OTA_CMD_OFFSET];
-    pay_len = get_ota_cmd_payload_len(cmd);
-    if(pay_len < 0 || (len != pay_len + OTA_MIN_LEN) || (pay_len != pkt[OTA_PAYLOAD_LEN_OFFSET]) ){
+    pay_len = pkt[OTA_PAYLOAD_LEN_OFFSET];
+    if((len != pay_len + OTA_MIN_LEN) || !validate_ota_cmd(cmd, pay_len)) {
         return;
     }
+
+
     //Calculate the checksum over the command byte, payload length, and payload
     for(i=OTA_CMD_OFFSET; i<len-2; i++){
         calc_checksum = fletcher(calc_checksum, pkt[i]);
@@ -86,14 +83,49 @@ void ota_handler(uint8_t* pkt, unsigned int len){
     case OTA_CMD_PING:
         send_pong();
         break;
+    case OTA_CMD_RESET_LFR:
+        handle_reset();
+        break;
     case OTA_CMD_GPIO:
         handle_gpio(pkt[OTA_PAYLOAD_OFFSET],pkt[OTA_PAYLOAD_OFFSET+1],pkt[OTA_PAYLOAD_OFFSET+2]);
+        break;
+    case OTA_CMD_ADC:
+        handle_adc(pkt[OTA_PAYLOAD_OFFSET]);
+        break;
+    case OTA_CMD_SET_TX_PWR:
+        handle_tx_pwr(pkt[OTA_PAYLOAD_OFFSET]<<8 | pkt[OTA_PAYLOAD_OFFSET+1]);
+        break;
     default:
         return;
     }
 }
 
-void handle_gpio(uint8_t pin, uint8_t mode, uint8_t value){
+void send_pong()
+{
+    uint8_t resp[] = {
+        OTA_FLAG,       // OTA HEADER
+        OTA_CMD_PING,   // OTA COMMAND
+        4,              // REPLY LEN
+        'P',            // REPLY DATA
+        'O',
+        'N',
+        'G',
+    };
+    set_status(STATUS_TXBUSY, true);
+    gpio_write(TX_ACT_PIN, HIGH);
+    set_gate_bias(settings.tx_gate_bias);
+    si446x_setup_tx(&dev, sizeof(resp), resp, tx_cb);
+    do_pong = true;
+}
+
+void handle_reset()
+{
+    // Use the reset command handler
+    cmd_reset();
+}
+
+void handle_gpio(uint8_t pin, uint8_t mode, uint8_t value)
+{
     uint8_t iopin=0;
     if(pin == 0) {
         iopin=EXT_IO0;
@@ -113,4 +145,26 @@ void handle_gpio(uint8_t pin, uint8_t mode, uint8_t value){
     } else {
         gpio_config(iopin, mode);
     }
+}
+
+void handle_adc(uint8_t chan)
+{
+    int result = adc_read(chan);
+
+    if (result > 0) {
+        uint8_t resp[] = {
+            OTA_FLAG,               // OTA HEADER
+            OTA_CMD_ADC,            // OTA COMMAND
+            2,                      // REPLY LEN
+            (result >> 8) & 0xFF,   // REPLY DATA
+            result & 0xFF,
+        };
+
+        send_w_retry(sizeof(resp), resp);
+    }
+}
+
+void handle_tx_pwr(uint16_t gate_bias)
+{
+    settings.tx_gate_bias = gate_bias;
 }

@@ -9,13 +9,18 @@
 #define SIMPLE_OTA_H_
 #include <stdint.h>
 
-#define OTA_CMD_PING (0)
-#define OTA_CMD_GPIO (1)
-#define OTA_CMD_TX_INHIBIT (2)
-#define OTA_CMD_TX_RELEASE (3)
-#define OTA_CMD_GET_RESETS (4)
-#define OTA_CMD_GET_WDT_RESETS (5)
-#define OTA_CMD_GET_UPTIME (6)
+#define OTA_CMD_PING            (0)
+#define OTA_CMD_RESET_LFR       (1)
+#define OTA_CMD_GPIO            (2)
+#define OTA_CMD_ADC             (3)
+#define OTA_CMD_I2C_SEND        (4)
+#define OTA_CMD_SET_TX_PWR      (5)
+#define OTA_CMD_GET_TEMPS       (6)
+#define OTA_CMD_GET_VBATT       (7)
+
+//#define OTA_CMD_GET_RESETS      ()
+//#define OTA_CMD_GET_WDT_RESETS  ()
+//#define OTA_CMD_GET_UPTIME      ()
 
 #define OTA_FLAG 0xDB
 #define OTA_KEY "LinkSat=BestSat"
