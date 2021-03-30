@@ -147,7 +147,7 @@ static int tx_abort()
         return err;
     }
 
-    err = si446x_abort_tx(&dev);
+    err = si446x_idle(&dev);
     if (err) {
         return err;
     }
