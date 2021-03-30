@@ -47,7 +47,7 @@ void tx_dead_key()
 
     err = reset_si446x();
     if (err) {
-        return err;
+        return;
     }
 
     err = si446x_set_mod_type(&dev, MOD_SRC_RAND | MOD_TYPE_CW);

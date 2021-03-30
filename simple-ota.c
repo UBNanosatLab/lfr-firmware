@@ -38,6 +38,10 @@ bool validate_ota_cmd(uint8_t cmd, uint8_t len)
         return len == 1;
     case OTA_CMD_SET_TX_PWR:
         return len == 1;
+    case OTA_CMD_FM_VOICE:
+        // 127 as an upper bound is kinda arbitrary, but I don't want to send
+        // a very long message
+        return len > 0 && len < 128;
     default:
         return false; // Invalid command
     }
@@ -95,6 +99,8 @@ void ota_handler(uint8_t* pkt, unsigned int len){
     case OTA_CMD_SET_TX_PWR:
         handle_tx_pwr(pkt[OTA_PAYLOAD_OFFSET]<<8 | pkt[OTA_PAYLOAD_OFFSET+1]);
         break;
+    case OTA_CMD_FM_VOICE:
+        handle_fm(pkt + OTA_PAYLOAD_OFFSET, pay_len);
     default:
         return;
     }
@@ -167,4 +173,9 @@ void handle_adc(uint8_t chan)
 void handle_tx_pwr(uint16_t gate_bias)
 {
     settings.tx_gate_bias = gate_bias;
+}
+
+void handle_fm(uint8_t *data, uint8_t len) {
+    fm_set_msg(len, data);
+    fm_start();
 }

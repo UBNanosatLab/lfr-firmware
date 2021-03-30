@@ -10,3 +10,4 @@ Debug/*
 *.pyc
 
 .DS_Store
+/Release/

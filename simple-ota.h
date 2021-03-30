@@ -15,9 +15,10 @@
 #define OTA_CMD_ADC             (3)
 #define OTA_CMD_I2C_SEND        (4)
 #define OTA_CMD_SET_TX_PWR      (5)
-#define OTA_CMD_GET_TEMPS       (6)
-#define OTA_CMD_GET_VBATT       (7)
+#define OTA_CMD_FM_VOICE        (6)
 
+//#define OTA_CMD_GET_TEMPS       ()
+//#define OTA_CMD_GET_VBATT       ()
 //#define OTA_CMD_GET_RESETS      ()
 //#define OTA_CMD_GET_WDT_RESETS  ()
 //#define OTA_CMD_GET_UPTIME      ()

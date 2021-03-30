@@ -163,7 +163,7 @@ void cmd_tx_psr()
 
     err = reset_si446x();
     if (err) {
-        return err;
+        return;
     }
 
     if ((settings.flags & FLAG_MOD_MASK) == FLAG_MOD_CW) {
