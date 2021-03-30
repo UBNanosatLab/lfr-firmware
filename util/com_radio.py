@@ -4,6 +4,7 @@ import sys
 import socket
 from time import sleep
 import threading
+import random
 
 import serial
 import struct
@@ -44,6 +45,15 @@ class Command(Enum):
 
     CMD_GET_QUEUE_DEPTH = 0x32
     GET_TEMPS = 0x33
+
+    USER0 = 0x70
+    USER1 = 0x71
+    USER2 = 0x72
+    USER3 = 0x73
+    USER4 = 0x74
+    USER5 = 0x75
+    USER6 = 0x76
+    USER7 = 0x77
 
     INTERNALERROR = 0x7E
     ERROR = 0x7F
@@ -141,8 +151,9 @@ class Radio:
         return chksum
 
     def send_pkt(self, cmd, data=bytes()):
-    
-        pkt = bytes([cmd.value, len(data)])
+        if isinstance(cmd, Command):
+            cmd = cmd.value
+        pkt = bytes([cmd, len(data)])
         pkt += data
         chksum = self.checksum(pkt)
         pkt += bytes([chksum >> 8, chksum & 0xFF])
@@ -397,13 +408,24 @@ class Radio:
         else:
             raise Exception('Unexpected response: ' + str((hex(cmd), pay)))
 
- 
+    def user(self, cmd_num, data):
+        if cmd_num < 0 or cmd_num > 0x07:
+            raise Exception('Invalid user command ' + str(cmd_num))
+
+        self.send_pkt(Command.USER0.value + cmd_num , data if isinstance(data, bytes) else data.encode('utf-8'))
+        (cmd, pay) = self.recv()
+
+
+        if cmd == Command.USER0.value + cmd_num | Command.REPLY.value:
+            return pay
+        else:
+            raise Exception('Unexpected response: ' + str((hex(cmd), pay)))
 
     def close(self):
         self.ser.close()
 
 def usage():
-    print('Usage: python3', sys.argv[0], '/dev/<RADIO_UART> [rx | tx n | get-cfg | load-cfg | save-cfg | default-cfg | tx-psr | tx-abort | reset | nop | get_temp]')
+    print('Usage: python3', sys.argv[0], '/dev/<RADIO_UART> [rx | tx n | get-cfg | load-cfg | save-cfg | default-cfg | tx-psr | rand | tx-abort | reset | nop | get_temp]')
 
 if __name__ == '__main__':
 
@@ -432,6 +454,15 @@ if __name__ == '__main__':
             print('Sent ' + str(len(data)) + ' byte(s)')
             # Look ma, no sleep!
     
+    elif (sys.argv[2] == 'rand' and len(sys.argv) == 4):
+        sleep(1)
+        for i in range(int(sys.argv[3])):
+            data = bytes([random.randint(0x21, 0x7E) for _ in range(255)])
+            print('TX>', data)
+            radio.tx(data)
+            print('Sent ' + str(len(data)) + ' byte(s)')
+            # Look ma, no sleep!
+
     elif (sys.argv[2] == 'get-cfg' and len(sys.argv) == 3):
         print(json.dumps(radio.get_cfg(), indent=4))
 

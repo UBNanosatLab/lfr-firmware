@@ -32,6 +32,8 @@
 #include "status.h"
 #include "simple-ota.h"
 #include "adc.h"
+#include "user.h"
+#include "fm.h"
 
 // Backing buffer for tx_queue
 uint8_t __attribute__((persistent)) tx_backing_buf[16384] = {0};
@@ -42,7 +44,8 @@ struct si446x_device dev;
 struct pkt_buf tx_queue;
 
 volatile bool do_pong = false;
-volatile bool radio_irq = true;
+volatile bool radio_irq = false;
+volatile bool fm_irq = true;
 
 void tx_cb(struct si446x_device *dev, int err);
 void rx_cb(struct si446x_device *dev, int err, int len, uint8_t *data);
@@ -140,6 +143,7 @@ int send_w_retry(int len, uint8_t *buf)
 
 void tx_cb(struct si446x_device *dev, int err)
 {
+
     if (err) {
         internal_error((uint8_t) -err);
     }
@@ -392,11 +396,14 @@ int main(void)
         return err;
     }
 
+    fm_init();
+    user_init();
+
     // Main loop
     while (true) {
-
         if (radio_irq) {
             radio_irq = false;
+            printf("IRQ\n");
             err = si446x_update(&dev);
             if (err) {
                 printf("Err: %d", err);
@@ -409,6 +416,9 @@ int main(void)
         } else if(uart_available()) {
                 char c = uart_getc();
                 parse_char(c);
+        } else if (fm_irq) {
+            fm_irq = false;
+            fm_step();
         }
         // Don't bother sleeping
     }
@@ -421,6 +431,14 @@ __interrupt void irq_isr()
     radio_irq = true;
     LPM4_EXIT; //This clears all the LPM bits, so it will leave the chip in run mode after the ISR
 }
+
+#pragma vector=TIMER3_A0_VECTOR
+__interrupt void fm_isr()
+{
+    fm_irq = true;
+    LPM4_EXIT;
+}
+
 
 #pragma vector=PORT2_VECTOR
 __interrupt void sync_word_isr()
@@ -460,4 +478,14 @@ __interrupt void rx_timeout_isr()
     si446x_rx_timeout(&dev);
     radio_irq = true;
     LPM4_EXIT; //This clears all the LPM bits, so it will leave the chip in run mode after the ISR
+}
+
+#pragma vector=TIMER2_A0_VECTOR
+__interrupt void tick_isr()
+{
+    TA2CCTL0 = 0;                           // TACCR0 interrupt disabled
+    TA2CTL |= TACLR;                        // Clear count
+    TA2CTL |= MC__UP;                       // Start timer in UP mode
+    TA2CCTL0 = CCIE;                        // TACCR0 interrupt enabled
+    user_tick();
 }

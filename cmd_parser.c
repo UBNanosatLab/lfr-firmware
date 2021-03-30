@@ -18,6 +18,7 @@
 
 #include "cmd_parser.h"
 #include "cmd_handler.h"
+#include "user.h"
 
 #include "error.h"
 #include "lfr.h"
@@ -152,6 +153,14 @@ bool validate_cmd(uint8_t cmd) {
     case CMD_CFG_DEFAULT:
     case CMD_GET_QUEUE_DEPTH:
     case CMD_GET_TEMPS:
+    case CMD_USER0:
+    case CMD_USER1:
+    case CMD_USER2:
+    case CMD_USER3:
+    case CMD_USER4:
+    case CMD_USER5:
+    case CMD_USER6:
+    case CMD_USER7:
       return true;
     default:
       return false;
@@ -173,6 +182,16 @@ bool validate_length(uint8_t cmd, uint8_t len) {
       return len == 4;
     case CMD_SET_CFG:
           return len > 0; // Allow any non-zero here, we check it in the cmd callback
+    // Allow anything, up to user to check
+    case CMD_USER0:
+    case CMD_USER1:
+    case CMD_USER2:
+    case CMD_USER3:
+    case CMD_USER4:
+    case CMD_USER5:
+    case CMD_USER6:
+    case CMD_USER7:
+        return true;
     default:
       return len == 0;
   }
@@ -225,6 +244,17 @@ void command_handler(uint8_t cmd, uint8_t len, uint8_t* payload) {
           break;
       case CMD_GET_TEMPS:
           cmd_get_temps();
+          break;
+      case CMD_USER0:
+      case CMD_USER1:
+      case CMD_USER2:
+      case CMD_USER3:
+      case CMD_USER4:
+      case CMD_USER5:
+      case CMD_USER6:
+      case CMD_USER7:
+          cmd_user(cmd & 0x07, len, payload);
+          break;
     }
 }
 
