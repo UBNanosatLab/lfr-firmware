@@ -60,6 +60,19 @@ class Command(Enum):
 
     REPLY = 0x80
 
+class OTACommand(Enum):
+    PING        = 0x00
+    RESET       = 0x01
+    GPIO        = 0x02
+    ADC         = 0x03
+    I2C_SEND    = 0x04
+    SET_TX_PWR  = 0x05
+    FM_VOICE    = 0x06
+    UPTIME      = 0x07
+    READ_RSSI   = 0x08
+    STICKY_GPIO = 0x09
+    GET_TEMPS   = 0x0A
+
 class RadioException(Exception):
 
     def __init__(self, code):
@@ -251,12 +264,15 @@ class Radio:
             raise Exception('Unexpected response: ' + str((hex(cmd), pay)))
 
     def rx(self):
+        self.rx_raw().decode("utf-8")
+
+    def rx_raw(self):
         (cmd, pay) = self.recv()
 
         if cmd  == Command.ERROR.value | Command.REPLY.value:
             raise RadioException(pay[0])
         elif cmd == Command.RXDATA.value | Command.REPLY.value:
-            return pay.decode("utf-8")
+            return pay
         else:
             raise Exception('Unexpected response: ' + str((hex(cmd), pay)))
 
@@ -420,6 +436,15 @@ class Radio:
             return pay
         else:
             raise Exception('Unexpected response: ' + str((hex(cmd), pay)))
+
+    def tx_ota_cmd(self, cmd, data=b''):
+        if isinstance(cmd, OTACommand):
+            cmd = cmd.value
+        pkt = bytes([cmd, len(data)]) 
+        pkt += data
+        chksum = self.checksum(pkt)
+        pkt = b'\xdbLinkSat=BestSat' + pkt + bytes([chksum >> 8, chksum & 0xFF])
+        self.tx(pkt)
 
     def close(self):
         self.ser.close()

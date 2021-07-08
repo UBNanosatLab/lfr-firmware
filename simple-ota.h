@@ -16,12 +16,13 @@
 #define OTA_CMD_I2C_SEND        (4)
 #define OTA_CMD_SET_TX_PWR      (5)
 #define OTA_CMD_FM_VOICE        (6)
+#define OTA_CMD_UPTIME          (7)
+#define OTA_CMD_READ_RSSI       (8)
+#define OTA_CMD_STICKY_GPIO     (9)
+#define OTA_CMD_GET_TEMPS       (10)
 
-//#define OTA_CMD_GET_TEMPS       ()
 //#define OTA_CMD_GET_VBATT       ()
-//#define OTA_CMD_GET_RESETS      ()
-//#define OTA_CMD_GET_WDT_RESETS  ()
-//#define OTA_CMD_GET_UPTIME      ()
+//#define OTA_CMD_GET_WDT_INFO  ()
 
 #define OTA_FLAG 0xDB
 #define OTA_KEY "LinkSat=BestSat"

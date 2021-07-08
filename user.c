@@ -21,16 +21,58 @@
 #include "cmd_handler.h"
 #include "user.h"
 #include "fm.h"
+#include "mcu.h"
+#include "pins.h"
 
 #include "error.h"
 #include "lfr.h"
 
-const char *hello = "Hello, world!";
+#pragma PERSISTENT(user_ext0_val)
+static uint8_t user_ext0_val = HIGH;
+#pragma PERSISTENT(user_ext0_mode)
+static uint8_t user_ext0_mode = OUTPUT;
 
-uint32_t ticks = 0;
+//#pragma PERSISTENT(user_ext1_val)
+//static uint8_t user_ext1_val = LOW;
+//#pragma PERSISTENT(user_ext1_mode)
+//static uint8_t user_ext1_mode = OUTPUT;
+
+#pragma PERSISTENT(num_resets)
+static uint16_t num_resets = 0x0000;
+
+static uint32_t uptime_ticks = 0;
+
+const char *hello = "Hello, world!";
 
 void user_init() {
 
+    num_resets++;
+
+    gpio_config(EXT_IO0, user_ext0_mode);
+    gpio_write(EXT_IO0, user_ext0_val);
+
+    // gpio_config(EXT_IO1, user_ext1_mode);
+    // gpio_write(EXT_IO1, user_ext1_val);
+
+    // We do not allow the setting of the burnwire flag to be sticky!
+    // This either kills the satellite by drawing all the power or by 
+    // getting stuck in a boot loop
+    gpio_config(EXT_IO1, LOW);
+    gpio_write(EXT_IO1, OUTPUT);
+}
+
+void set_sticky_gpio(uint8_t pin, uint8_t mode, uint8_t val) {
+    if (pin == EXT_IO0) {
+        user_ext0_mode = mode;
+        user_ext0_val = val;
+    } else if (pin == EXT_IO1) {
+        // NO!
+        // We do not allow the setting of the burnwire flag to be sticky!
+        // This either kills the satellite by drawing all the power or by 
+        // getting stuck in a boot loop
+        // user_ext1_mode = mode;
+        // user_ext1_val = val;
+    }
 }
 
 void tx_dead_key()
@@ -92,8 +134,8 @@ void tx_dead_key()
 void cmd_user(uint8_t cmd, uint8_t len, uint8_t *data)
 {
     uint8_t arr[] = {
-        (ticks >> 24) & 0xFF, (ticks >> 16) & 0xFF,
-        (ticks >> 8) & 0xFF, ticks & 0xFF
+        (uptime_ticks >> 24) & 0xFF, (uptime_ticks >> 16) & 0xFF,
+        (uptime_ticks >> 8) & 0xFF, uptime_ticks & 0xFF
     };
 
     switch(cmd) {
@@ -120,5 +162,13 @@ void cmd_user(uint8_t cmd, uint8_t len, uint8_t *data)
 
 void user_tick()
 {
-    ticks++;
+    uptime_ticks++;
+}
+
+int32_t get_uptime_ticks() {
+    return uptime_ticks;
+}
+
+int16_t get_num_resets() {
+    return num_resets;
 }

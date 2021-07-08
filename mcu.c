@@ -263,14 +263,14 @@ void mcu_init()
 
     TA0CCTL0 = 0;                           // TACCR0 interrupt disabled
     TA1CCTL0 = 0;                           // TACCR0 interrupt disabled
-    TA0CCR0 = 48000L;                       // 6 ms @ 8e6 Hz clk
-    TA0CTL = TASSEL__SMCLK | TACLR;         // SMCLK
+    TA0CCR0 = 48000L;                       // 12 ms @ 4e6 Hz clk
+    TA0CTL = TASSEL__SMCLK | TACLR | ID_1;  // SMCLK / 2
     TA1CTL = TACLR;
     TA1CCR0 = 6882L;                        // 210 ms @ 2^15 (32K) Hz clk
     TA1CTL = TASSEL__ACLK | TACLR;          // ACLK
 
-    TA2CCR0 = 1638L;                        // 210 ms @ 2^15 (32K) Hz clk
-    TA2CTL = TASSEL__ACLK | TACLR;          // ACLK
+    TA2CCR0 = 1638L;                        // 50 ms @ 2^15 (32K) Hz clk
+    TA2CTL = TASSEL__ACLK | TACLR | MC__UP; // ACLK
     TA2CCTL0 = CCIE;                        // TACCR0 interrupt enabled
     
     // 16 sec w/ 32.768 kHz ACLK

@@ -31,4 +31,13 @@ void cmd_user(uint8_t cmd, uint8_t len, uint8_t *data);
 // Called periodically, once every 50ms
 void user_tick();
 
+// Set user GPIO power on defaults
+void set_sticky_gpio(uint8_t pin, uint8_t mode, uint8_t val);
+
+// Get number of ticks (50 ms intervals) since boot
+int32_t get_uptime_ticks();
+
+// Get number of resets that have occurred since flashing
+int16_t get_num_resets();
+
 #endif
